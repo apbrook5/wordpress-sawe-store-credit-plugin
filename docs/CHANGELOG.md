@@ -12,6 +12,23 @@ _Nothing yet._
 
 ---
 
+## [1.0.1] — 2026-03
+
+### Fixed
+- **Credit applied to non-qualifying products** — `product_qualifies()` now returns
+  `false` immediately when a credit definition has no qualifying products AND no
+  qualifying categories configured, preventing the credit from applying to every
+  product in the store.
+- **Variable products never matched categories** — WooCommerce assigns `product_cat`
+  terms to the parent variable product, not to individual variations. The category
+  check now looks up the parent product ID when a variation ID is passed, so
+  variable product categories resolve correctly.
+- **Variable products by ID** — The direct product ID check now also tests the
+  parent product ID so that admins can list either the parent or a specific
+  variation in the qualifying products list and have it work as expected.
+
+---
+
 ## [1.0.0] — 2026-03
 
 ### Added

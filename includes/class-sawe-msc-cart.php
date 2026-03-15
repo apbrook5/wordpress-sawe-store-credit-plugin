@@ -252,7 +252,9 @@ class SAWE_MSC_Cart {
         $total = 0.0;
 
         foreach ( $cart->get_cart() as $item ) {
-            // Use variation ID if present (variable product), otherwise use product ID.
+            // Pass the variation ID when present so that product_qualifies() can
+            // check explicit variation IDs in the products list. product_qualifies()
+            // itself handles the parent-ID fallback for category lookups.
             $product_id = (int) ( $item['variation_id'] ?: $item['product_id'] );
 
             if ( SAWE_MSC_User_Credits::product_qualifies( $product_id, $meta ) ) {

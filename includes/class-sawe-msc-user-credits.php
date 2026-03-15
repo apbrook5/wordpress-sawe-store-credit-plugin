@@ -326,17 +326,49 @@ class SAWE_MSC_User_Credits {
      * @return bool  True if the product qualifies, false otherwise.
      */
     public static function product_qualifies( int $product_id, array $meta ): bool {
+        // If the credit has NO qualifying products and NO qualifying categories
+        // configured at all, nothing in the store qualifies. Return false immediately
+        // rather than accidentally applying the credit to every product.
+        if ( empty( $meta['products'] ) && empty( $meta['product_categories'] ) ) {
+            return false;
+        }
+
         // Check 1: is this exact product ID in the qualifying products list?
-        if ( ! empty( $meta['products'] ) &&
-             in_array( $product_id, array_map( 'intval', $meta['products'] ), true ) ) {
-            return true;
+        // We check both the passed ID (may be a variation) and the parent product ID
+        // so that variable products matched by ID work correctly.
+        if ( ! empty( $meta['products'] ) ) {
+            $qualifying_ids = array_map( 'intval', $meta['products'] );
+
+            // Direct ID match (simple product or variation listed explicitly).
+            if ( in_array( $product_id, $qualifying_ids, true ) ) {
+                return true;
+            }
+
+            // Also check the parent product ID in case a variation was passed
+            // but the admin listed the parent variable product.
+            $product = wc_get_product( $product_id );
+            if ( $product && $product->get_parent_id() &&
+                 in_array( (int) $product->get_parent_id(), $qualifying_ids, true ) ) {
+                return true;
+            }
         }
 
         // Check 2: does the product belong to any qualifying category?
         if ( ! empty( $meta['product_categories'] ) ) {
-            // wc_get_product_term_ids returns all term IDs for a given taxonomy.
-            $terms = wc_get_product_term_ids( $product_id, 'product_cat' );
-            if ( ! empty( array_intersect( array_map( 'intval', $meta['product_categories'] ), $terms ) ) ) {
+            $qualifying_cats = array_map( 'intval', $meta['product_categories'] );
+
+            // WooCommerce assigns product_cat terms to the PARENT product, not to
+            // individual variations. If we received a variation ID, we must look up
+            // the parent's ID for the category check, otherwise wc_get_product_term_ids()
+            // returns an empty array and the category check always fails.
+            $lookup_id = $product_id;
+            $product   = wc_get_product( $product_id );
+            if ( $product && $product->is_type( 'variation' ) && $product->get_parent_id() ) {
+                $lookup_id = (int) $product->get_parent_id();
+            }
+
+            $terms = wc_get_product_term_ids( $lookup_id, 'product_cat' );
+            if ( ! empty( array_intersect( $qualifying_cats, $terms ) ) ) {
                 return true;
             }
         }
