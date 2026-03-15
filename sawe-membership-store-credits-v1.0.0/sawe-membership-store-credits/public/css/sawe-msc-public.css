@@ -1,0 +1,171 @@
+/**
+ * SAWE Membership Store Credits — Public Stylesheet
+ *
+ * Applies to: Cart page, Checkout page, My Account pages (tab + dashboard).
+ * Loaded by:  SAWE_MSC_Cart::enqueue_scripts()    (cart + checkout pages)
+ *             SAWE_MSC_Account::enqueue_styles()   (My Account pages)
+ *
+ * ============================================================================
+ * CUSTOMISATION
+ * ============================================================================
+ *
+ * All class names are prefixed `.sawe-msc-` to avoid conflicts with theme or
+ * other plugin styles. Override any of these rules in your child theme's
+ * style.css or via Appearance → Customize → Additional CSS.
+ *
+ * Example: Change the credit card to SAWE navy + white
+ * ──────────────────────────────────────────────────────
+ *   .sawe-msc-credit-box {
+ *       background-color: #003087;
+ *       border-color:     #c8a400;
+ *       color:            #ffffff;
+ *   }
+ *   .sawe-msc-credit-title,
+ *   .sawe-msc-credit-details strong {
+ *       color: #ffd700;
+ *   }
+ *
+ * Example: Make the box full-width and add a shadow
+ * ──────────────────────────────────────────────────────
+ *   .sawe-msc-credit-box {
+ *       width:      100%;
+ *       box-shadow: 0 2px 6px rgba(0,0,0,.15);
+ *   }
+ *
+ * ============================================================================
+ * CLASS INVENTORY
+ * ============================================================================
+ *
+ *  .sawe-msc-credit-notice-wrap   Outer wrapper for all credit cards on a page.
+ *  .sawe-msc-credit-box           Individual card; light-blue bg + gold border.
+ *  .sawe-msc-credit-title         Credit name heading (<h4>).
+ *  .sawe-msc-credit-desc          Credit description paragraph (<p>).
+ *  .sawe-msc-credit-details       Balance / renewal details list (<ul>).
+ *  .sawe-msc-remove-btn           "Remove Store Credit" button.
+ *  .sawe-msc-restore-btn          "Re-apply Store Credit" button.
+ */
+
+
+/* ============================================================================
+   WRAPPER
+   Contains all credit cards output by a single display call.
+   Margin-bottom creates space before the checkout form fields below it.
+   ============================================================================ */
+.sawe-msc-credit-notice-wrap {
+    margin: 0 0 1.5em;
+}
+
+
+/* ============================================================================
+   CREDIT CARD
+   The main visual unit — one per store credit definition.
+
+   Colors:
+     Background #e8f4ff  — pale sky blue, evokes trust / membership
+     Border     #c8a400  — SAWE gold, reinforces brand identity
+   ============================================================================ */
+.sawe-msc-credit-box {
+    background-color: #e8f4ff;   /* light blue background */
+    border:           2px solid #c8a400; /* gold border */
+    border-radius:    6px;
+    padding:          1em 1.25em;
+    margin-bottom:    1em;
+    font-family:      inherit;   /* matches the active theme's body font */
+    color:            #1a1a1a;
+}
+
+/* Remove the bottom margin from the last card so it sits flush against
+   whatever element follows the wrapper (e.g. the checkout form). */
+.sawe-msc-credit-box:last-child {
+    margin-bottom: 0;
+}
+
+
+/* ============================================================================
+   TITLE
+   The credit name, set by the admin in the post title field.
+   Displayed in a deep navy blue to complement the gold border.
+   ============================================================================ */
+.sawe-msc-credit-title {
+    margin:      0 0 .4em;
+    font-size:   1.1em;
+    font-weight: 700;
+    color:       #1a3a5c; /* dark navy */
+}
+
+
+/* ============================================================================
+   DESCRIPTION
+   The credit's member-facing description from the post body (editor field).
+   Only shown on the Checkout page and the full My Account Credits tab.
+   Hidden on the dashboard widget (compact mode) via PHP, not CSS.
+   ============================================================================ */
+.sawe-msc-credit-desc {
+    margin:    0 0 .75em;
+    font-size: .95em;
+    color:     #333;
+}
+
+
+/* ============================================================================
+   DETAILS LIST
+   Shows: Available Balance, (Applied to this order), Renews on.
+   Uses a fixed min-width on <strong> labels to left-align the values.
+   ============================================================================ */
+.sawe-msc-credit-details {
+    list-style: none;
+    margin:     0 0 .75em;
+    padding:    0;
+    font-size:  .95em;
+}
+
+.sawe-msc-credit-details li {
+    margin-bottom: .25em;
+}
+
+/* Label column: "Available Balance:", "Renews on:", etc. */
+.sawe-msc-credit-details strong {
+    display:   inline-block;
+    min-width: 160px; /* aligns values in a pseudo-table layout */
+    color:     #1a3a5c;
+}
+
+
+/* ============================================================================
+   ACTION BUTTONS
+   Shared base styles for both Remove and Restore buttons.
+   The buttons inherit WooCommerce's .button class (added by PHP) for basic
+   sizing; these rules handle colour differentiation only.
+   ============================================================================ */
+.sawe-msc-remove-btn,
+.sawe-msc-restore-btn {
+    font-size:     .85em;
+    padding:       .3em .8em;
+    cursor:        pointer;
+    border-radius: 4px;
+    margin-top:    .25em;
+    border-width:  1px;
+    border-style:  solid;
+}
+
+/* Remove button — amber / warning tone */
+.sawe-msc-remove-btn {
+    background:   #fff3cd;
+    border-color: #c8a400;
+    color:        #7a5c00;
+}
+
+.sawe-msc-remove-btn:hover {
+    background: #ffeaa0;
+}
+
+/* Restore button — green / positive tone */
+.sawe-msc-restore-btn {
+    background:   #d4edda;
+    border-color: #28a745;
+    color:        #155724;
+}
+
+.sawe-msc-restore-btn:hover {
+    background: #b8dfc4;
+}

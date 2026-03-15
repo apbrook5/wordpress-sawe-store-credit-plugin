@@ -1,0 +1,161 @@
+/**
+ * SAWE Membership Store Credits — Admin Stylesheet
+ *
+ * Scoped to the sawe_store_credit post-type edit and list screens.
+ * Loaded by: SAWE_MSC_Admin::enqueue_scripts() — only on sawe_store_credit screens.
+ *
+ * ============================================================================
+ * WHAT THIS FILE STYLES
+ * ============================================================================
+ *
+ * 1. META BOX LAYOUT
+ *    The "Store Credit Settings" meta box uses a simple stacked field layout.
+ *    Each field group is a .sawe-msc-field div. Horizontal rules (<hr>) divide
+ *    the logical sections (notes, amount/date, roles, categories, products).
+ *
+ * 2. TAG-CHIP LIST MANAGERS
+ *    The roles, product categories, and product list managers use a chip (tag)
+ *    UI instead of a standard multi-select. Each selected item is a .sawe-msc-tag
+ *    chip containing the display label, a hidden <input> (for form submission),
+ *    and a × remove button.
+ *
+ *    The chip container (.sawe-msc-selected-list) uses flexbox with flex-wrap
+ *    so chips flow naturally across multiple lines on smaller screens.
+ *
+ * ============================================================================
+ * CLASS INVENTORY
+ * ============================================================================
+ *
+ *  .sawe-msc-metabox          Outer wrapper div inside the meta box.
+ *  .sawe-msc-field            A single field group (label + description + input).
+ *  .sawe-msc-selected-list    The chip container (bordered, min-height, flex).
+ *  .sawe-msc-tag              An individual chip: label text + × button + hidden input.
+ *  .sawe-msc-remove-tag       The × button inside a chip.
+ *  .sawe-msc-add-dropdown     The <select> used to pick a new item to add.
+ *
+ * ============================================================================
+ * CUSTOMISATION
+ * ============================================================================
+ *
+ * These styles are intentionally minimal. To change the chip appearance,
+ * override in your child theme's admin area or a custom admin CSS plugin.
+ *
+ * Example: Make chips use SAWE navy instead of gold border
+ *   .sawe-msc-tag { border-color: #003087; color: #003087; background: #e8f0ff; }
+ *   .sawe-msc-remove-tag { color: #003087; }
+ */
+
+
+/* ============================================================================
+   META BOX LAYOUT
+   ============================================================================ */
+
+/**
+ * Individual field group inside the meta box.
+ * Provides consistent vertical spacing between each labelled control.
+ */
+.sawe-msc-metabox .sawe-msc-field {
+    margin-bottom: 1.25em;
+}
+
+/**
+ * Field labels: displayed as block so the description and input stack below.
+ * The <strong> inside the label provides the bold visual weight; the <label>
+ * element itself is transparent here.
+ */
+.sawe-msc-metabox .sawe-msc-field label {
+    display:       block;
+    margin-bottom: .3em;
+}
+
+/**
+ * Section dividers between field groups.
+ * Uses border-top only (no visible box) so the rule reads as a content separator,
+ * not a UI element.
+ */
+.sawe-msc-metabox hr {
+    border:     none;
+    border-top: 1px solid #ddd;
+    margin:     1em 0;
+}
+
+
+/* ============================================================================
+   TAG-CHIP CONTAINER (.sawe-msc-selected-list)
+   Holds zero or more .sawe-msc-tag chips.
+   Styled to look like a readonly text input area when empty.
+   ============================================================================ */
+.sawe-msc-selected-list {
+    min-height:    36px;          /* Visible target area even when empty */
+    border:        1px solid #ccd0d4; /* WP admin input border colour */
+    border-radius: 4px;
+    padding:       6px 8px;
+    background:    #fff;
+    margin-bottom: .5em;
+
+    /* Flex layout so chips wrap naturally */
+    display:   flex;
+    flex-wrap: wrap;
+    gap:       6px;
+}
+
+
+/* ============================================================================
+   TAG CHIP (.sawe-msc-tag)
+   Represents a single selected role, category, or product.
+
+   Each chip contains:
+     1. Visible label text
+     2. .sawe-msc-remove-tag button (×)
+     3. Hidden <input> carrying the value for form submission
+
+   Colors mirror the front-end credit box for visual consistency:
+     Background: #e8f4ff (pale blue)
+     Border:     #c8a400 (SAWE gold)
+     Text:       #1a3a5c (dark navy)
+   ============================================================================ */
+.sawe-msc-tag {
+    display:        inline-flex;
+    align-items:    center;
+    background:     #e8f4ff;
+    border:         1px solid #c8a400;
+    border-radius:  3px;
+    padding:        3px 8px;
+    font-size:      13px;
+    line-height:    1.4;
+    color:          #1a3a5c;
+}
+
+
+/* ============================================================================
+   CHIP REMOVE BUTTON (.sawe-msc-remove-tag)
+   The × button inside each chip.
+   Rendered as a bare button (no border/background) so it blends with the chip.
+   ============================================================================ */
+.sawe-msc-remove-tag {
+    background:   none;
+    border:       none;
+    cursor:       pointer;
+    font-size:    14px;
+    line-height:  1;
+    color:        #c8a400; /* gold — matches the chip border */
+    padding:      0 0 0 6px;
+    margin:       0;
+    font-weight:  700;
+}
+
+/* On hover, turn red to signal destructive intent. */
+.sawe-msc-remove-tag:hover {
+    color: #a00;
+}
+
+
+/* ============================================================================
+   ADD-ITEM DROPDOWN (.sawe-msc-add-dropdown)
+   The <select> from which an admin picks a new role/category/product to add.
+   Sits inline next to the "Add X" button.
+   ============================================================================ */
+.sawe-msc-add-dropdown {
+    min-width:    220px; /* Wide enough to show typical role/product names */
+    margin-right: 6px;  /* Space between the dropdown and the Add button */
+}
