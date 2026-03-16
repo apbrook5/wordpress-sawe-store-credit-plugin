@@ -71,6 +71,7 @@
     padding:          1em 1.25em;
     margin-bottom:    1em;
     font-family:      inherit;   /* matches the active theme's body font */
+    font-size:        0.75em;    /* scale box 25% smaller */
     color:            #1a1a1a;
 }
 

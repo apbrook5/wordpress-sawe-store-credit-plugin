@@ -6,9 +6,17 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [Unreleased]
+## [1.0.4] — 2026-03
 
-_Nothing yet._
+### Changed
+- Reduced the store credit display box size by 25% via `font-size: 0.75em` on `.sawe-msc-credit-box`, proportionally scaling all internal padding, margins, and text.
+
+---
+
+## [1.0.3] — 2026-03
+
+### Changed
+- Renamed the WordPress admin sidebar menu label and page title from "Store Credits" to "SAWE Store Credits" for clearer branding.
 
 ---
 
