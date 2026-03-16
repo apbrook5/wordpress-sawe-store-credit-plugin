@@ -213,7 +213,7 @@ class SAWE_MSC_Coupons {
      * @return string
      */
     public function suppress_auto_apply_message( string $msg, int $msg_code, \WC_Coupon $coupon ): string {
-        if ( $this->auto_applying && \WC_Coupon::COUPON_SUCCESS === $msg_code ) {
+        if ( $this->auto_applying && \WC_Coupon::WC_COUPON_SUCCESS === $msg_code ) {
             return ''; // wc_add_notice() skips empty strings.
         }
         return $msg;
