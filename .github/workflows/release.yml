@@ -21,6 +21,8 @@ on:
   push:
     tags:
       - 'v*'
+  release:
+    types: [published]
 
 jobs:
   build:
@@ -35,9 +37,12 @@ jobs:
 
       # ── 2. Extract the version number from the tag ─────────────────────────
       # Strips the leading 'v' so v1.0.1 becomes 1.0.1.
+      # Works for both push-tag and GitHub website release triggers.
       # Stored as ${{ env.VERSION }} for use in later steps.
       - name: Set version from tag
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+        run: |
+          TAG="${{ github.event.release.tag_name || github.ref_name }}"
+          echo "VERSION=${TAG#v}" >> $GITHUB_ENV
 
       # ── 3. Build the plugin zip ────────────────────────────────────────────
       # Creates a folder named sawe-membership-store-credits (the exact name
@@ -85,15 +90,24 @@ jobs:
           echo "Built: sawe-membership-store-credits-${{ env.VERSION }}.zip"
           unzip -l sawe-membership-store-credits-${{ env.VERSION }}.zip | head -40
 
-      # ── 4. Create the GitHub Release and attach the zip ────────────────────
-      # Uses the official GitHub CLI (gh) which is pre-installed on all
-      # GitHub-hosted runners. Automatically generates release notes from
-      # commit messages since the last tag.
-      - name: Create GitHub Release
+      # ── 4. Attach the zip to the GitHub Release ────────────────────────────
+      # If triggered by the GitHub website (release event), the release already
+      # exists — upload the asset to it. If triggered by a tag push, create the
+      # release first then attach the asset.
+      - name: Attach zip to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "Release ${{ github.ref_name }}" \
-            --generate-notes \
-            sawe-membership-store-credits-${{ env.VERSION }}.zip
+          TAG="${{ github.event.release.tag_name || github.ref_name }}"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            # Release already exists (created via GitHub website) — just upload.
+            gh release upload "$TAG" \
+              sawe-membership-store-credits-${{ env.VERSION }}.zip \
+              --clobber
+          else
+            # No release yet (triggered by tag push) — create it and attach.
+            gh release create "$TAG" \
+              --title "Release $TAG" \
+              --generate-notes \
+              sawe-membership-store-credits-${{ env.VERSION }}.zip
+          fi

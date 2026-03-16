@@ -6,6 +6,14 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.8] — 2026-03
+
+### Fixed
+- GitHub Actions workflow now also triggers on the `release: published` event so that creating a release through the GitHub website builds and attaches the plugin zip correctly. Previously only tag pushes from the command line triggered the build.
+- Workflow now uploads to an existing release (GitHub website flow) or creates one (tag push flow) without error.
+
+---
+
 ## [1.0.7] — 2026-03
 
 ### Changed
