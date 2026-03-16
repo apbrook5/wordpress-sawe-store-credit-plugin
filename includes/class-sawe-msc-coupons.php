@@ -141,6 +141,11 @@ class SAWE_MSC_Coupons {
             [ $this, 'endpoint_content' ]
         );
 
+        // ── Native WC coupon removal (e.g. [Remove] link in cart totals) ─────
+        // Fires whenever WC removes a coupon by any means. Adding the code to
+        // SESSION_COUPON_REMOVED here prevents auto-apply from re-adding it.
+        add_action( 'woocommerce_removed_coupon', [ $this, 'on_coupon_removed' ] );
+
         // ── AJAX handlers (logged-in users only) ──────────────────────────────
         add_action( 'wp_ajax_sawe_msc_apply_coupon',  [ $this, 'ajax_apply_coupon' ] );
         add_action( 'wp_ajax_sawe_msc_remove_coupon', [ $this, 'ajax_remove_coupon' ] );
@@ -660,6 +665,31 @@ class SAWE_MSC_Coupons {
     // =========================================================================
     // Session helpers
     // =========================================================================
+
+    /**
+     * Action: woocommerce_removed_coupon
+     *
+     * Called by WC whenever a coupon is removed by any means — including the
+     * native [Remove] link in the cart totals table. Adds the coupon code to
+     * SESSION_COUPON_REMOVED so maybe_auto_apply_coupons() does not re-apply
+     * it on the next page load or AJAX cart update.
+     *
+     * @param string $coupon_code  The code that was removed (lowercased by WC).
+     *
+     * @return void
+     */
+    public function on_coupon_removed( string $coupon_code ): void {
+        if ( ! WC()->session ) {
+            return;
+        }
+
+        $removed = $this->get_removed_codes();
+
+        if ( ! in_array( $coupon_code, $removed, true ) ) {
+            $removed[] = $coupon_code;
+            WC()->session->set( self::SESSION_COUPON_REMOVED, $removed );
+        }
+    }
 
     /**
      * Get the list of coupon codes the user has manually removed this session.

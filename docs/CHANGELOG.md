@@ -6,11 +6,12 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.1.1] — 2026-03
+## [1.1.1] — 2026-03-16
 
 ### Fixed
 - **Store credit "Applied to this order:" showing pre-coupon amount** — When a WooCommerce coupon was applied before the store credit, the qualifying product total was calculated from `line_subtotal` (pre-coupon price) instead of `line_total` (post-coupon price). The credit was therefore capped against the wrong (higher) amount. Now uses `line_total` so the credit and its displayed amount are both correctly bounded by what the customer actually owes after coupons.
 - **`WC_Coupon::COUPON_SUCCESS` undefined constant** — Corrected to `WC_Coupon::WC_COUPON_SUCCESS` in `class-sawe-msc-coupons.php`.
+- **WooCommerce native [Remove] coupon link re-applied by auto-apply** — Hooked `woocommerce_removed_coupon` (fires for all coupon removals, including WC's own cart-totals UI) to add the code to `SESSION_COUPON_REMOVED`, preventing `maybe_auto_apply_coupons()` from immediately re-adding it.
 
 ---
 
