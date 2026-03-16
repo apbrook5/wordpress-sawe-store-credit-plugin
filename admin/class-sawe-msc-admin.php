@@ -104,6 +104,9 @@ class SAWE_MSC_Admin {
         // Enqueue admin CSS + JS. Only loaded on sawe_store_credit screens.
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
 
+        // CSV download must be handled in admin_init before page headers are sent.
+        add_action( 'admin_init', [ $this, 'maybe_download_csv' ] );
+
         // ── Custom list-table columns ──────────────────────────────────────
         // Filter: add our custom column headers to the CPT list table.
         add_filter( 'manage_sawe_store_credit_posts_columns',
@@ -174,6 +177,16 @@ class SAWE_MSC_Admin {
             __( 'Coupons', 'sawe-msc' ),                   // Sub-menu label
             'manage_woocommerce',
             'edit.php?post_type=shop_coupon'               // Links to WC coupon list
+        );
+
+        // Active Store Credits report: all awarded balances with inline edit.
+        add_submenu_page(
+            'sawe-msc-settings',
+            __( 'Active Store Credits', 'sawe-msc' ),
+            __( 'Active Store Credits', 'sawe-msc' ),
+            'manage_woocommerce',
+            'sawe-msc-active-credits',
+            [ $this, 'render_active_credits_page' ]
         );
     }
 
@@ -901,5 +914,277 @@ class SAWE_MSC_Admin {
             SAWE_MSC_VERSION,                                    // Cache buster
             true                                                 // Load in footer
         );
+    }
+
+    // =========================================================================
+    // Active Store Credits page
+    // =========================================================================
+
+    /**
+     * Handle CSV download before page headers are sent.
+     *
+     * Must run on admin_init. Checks that the request is for this page with the
+     * download_csv action, then streams the CSV and exits.
+     *
+     * Hook: admin_init
+     *
+     * @return void
+     */
+    public function maybe_download_csv(): void {
+        if ( ( $_GET['page'] ?? '' ) !== 'sawe-msc-active-credits' ) {
+            return;
+        }
+        if ( ( $_GET['action'] ?? '' ) !== 'download_csv' ) {
+            return;
+        }
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_die( esc_html__( 'Permission denied.', 'sawe-msc' ) );
+        }
+
+        check_admin_referer( 'sawe_msc_csv' );
+        $this->stream_credits_csv();
+        exit;
+    }
+
+    /**
+     * Render the "Active Store Credits" admin page.
+     *
+     * Displays a table of all awarded user credits with an inline balance editor
+     * and a link to download the table as a CSV file.
+     *
+     * @return void
+     */
+    public function render_active_credits_page(): void {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_die( esc_html__( 'Permission denied.', 'sawe-msc' ) );
+        }
+
+        $notice = '';
+
+        // ── Handle balance update POST ─────────────────────────────────────────
+        if (
+            'POST' === $_SERVER['REQUEST_METHOD'] &&
+            isset( $_POST['sawe_msc_update_balance_nonce'] )
+        ) {
+            check_admin_referer( 'sawe_msc_update_balance', 'sawe_msc_update_balance_nonce' );
+
+            $credit_post_id = (int) ( $_POST['credit_post_id'] ?? 0 );
+            $user_id        = (int) ( $_POST['user_id'] ?? 0 );
+            $new_balance    = isset( $_POST['new_balance'] )
+                ? round( max( 0.0, (float) $_POST['new_balance'] ), 2 )
+                : null;
+
+            if ( $credit_post_id && $user_id && null !== $new_balance ) {
+                global $wpdb;
+                $table   = SAWE_MSC_DB::user_credits_table();
+                $updated = $wpdb->update(
+                    $table,
+                    [ 'balance' => $new_balance ],
+                    [ 'credit_post_id' => $credit_post_id, 'user_id' => $user_id ],
+                    [ '%f' ],
+                    [ '%d', '%d' ]
+                );
+                if ( false !== $updated ) {
+                    $notice = '<div class="notice notice-success is-dismissible"><p>' .
+                        esc_html__( 'Balance updated.', 'sawe-msc' ) .
+                        '</p></div>';
+                } else {
+                    $notice = '<div class="notice notice-error is-dismissible"><p>' .
+                        esc_html__( 'Balance update failed.', 'sawe-msc' ) .
+                        '</p></div>';
+                }
+            }
+        }
+
+        $rows        = $this->get_all_credit_rows();
+        $date_format = get_option( 'date_format', 'Y-m-d' );
+
+        // Cache per-credit data to avoid repeated lookups.
+        $credit_cache = [];
+        foreach ( $rows as $row ) {
+            $cpid = (int) $row->credit_post_id;
+            if ( ! isset( $credit_cache[ $cpid ] ) ) {
+                $credit_cache[ $cpid ] = [
+                    'title'        => get_the_title( $cpid ),
+                    'next_renewal' => SAWE_MSC_Credit_Post_Type::get_next_renewal_date( $cpid ),
+                ];
+            }
+        }
+
+        $csv_url = wp_nonce_url(
+            add_query_arg(
+                'action',
+                'download_csv',
+                admin_url( 'admin.php?page=sawe-msc-active-credits' )
+            ),
+            'sawe_msc_csv'
+        );
+
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e( 'Active Store Credits', 'sawe-msc' ); ?></h1>
+
+            <?php echo $notice; // already escaped above ?>
+
+            <p>
+                <a href="<?php echo esc_url( $csv_url ); ?>" class="button">
+                    <?php esc_html_e( 'Download CSV', 'sawe-msc' ); ?>
+                </a>
+            </p>
+
+            <?php if ( empty( $rows ) ) : ?>
+                <p><?php esc_html_e( 'No store credits have been awarded yet.', 'sawe-msc' ); ?></p>
+            <?php else : ?>
+
+            <table class="wp-list-table widefat fixed striped sawe-msc-credits-table">
+                <thead>
+                    <tr>
+                        <th><?php esc_html_e( 'Credit Name',      'sawe-msc' ); ?></th>
+                        <th><?php esc_html_e( 'Username',         'sawe-msc' ); ?></th>
+                        <th><?php esc_html_e( 'Display Name',     'sawe-msc' ); ?></th>
+                        <th><?php esc_html_e( 'Current Balance',  'sawe-msc' ); ?></th>
+                        <th><?php esc_html_e( 'Initial Balance',  'sawe-msc' ); ?></th>
+                        <th><?php esc_html_e( 'Created',          'sawe-msc' ); ?></th>
+                        <th><?php esc_html_e( 'Last Updated',     'sawe-msc' ); ?></th>
+                        <th><?php esc_html_e( 'Last Renewal',     'sawe-msc' ); ?></th>
+                        <th><?php esc_html_e( 'Next Renewal',     'sawe-msc' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( $rows as $row ) :
+                        $cpid        = (int) $row->credit_post_id;
+                        $uid         = (int) $row->user_id;
+                        $cache       = $credit_cache[ $cpid ];
+                        $profile_url = get_edit_user_link( $uid );
+                        $awarded_dt  = $row->awarded_at
+                            ? date_i18n( $date_format, strtotime( $row->awarded_at ) ) : '—';
+                        $updated_dt  = $row->last_updated
+                            ? date_i18n( $date_format, strtotime( $row->last_updated ) ) : '—';
+                        $renewed_dt  = $row->renewed_at
+                            ? date_i18n( $date_format, strtotime( $row->renewed_at ) ) : '—';
+                        $next_dt     = $cache['next_renewal']
+                            ? $cache['next_renewal']->format( 'F j, Y' ) : '—';
+                    ?>
+                    <tr>
+                        <td><?php echo esc_html( $cache['title'] ); ?></td>
+                        <td>
+                            <a href="<?php echo esc_url( $profile_url ); ?>">
+                                <?php echo esc_html( $row->user_login ); ?>
+                            </a>
+                        </td>
+                        <td><?php echo esc_html( $row->display_name ); ?></td>
+                        <td>
+                            <form method="post" style="display:flex;gap:4px;align-items:center;">
+                                <?php wp_nonce_field( 'sawe_msc_update_balance', 'sawe_msc_update_balance_nonce' ); ?>
+                                <input type="hidden" name="credit_post_id" value="<?php echo esc_attr( $cpid ); ?>">
+                                <input type="hidden" name="user_id"        value="<?php echo esc_attr( $uid ); ?>">
+                                <input type="number"
+                                       name="new_balance"
+                                       value="<?php echo esc_attr( number_format( (float) $row->balance, 2, '.', '' ) ); ?>"
+                                       min="0" step="0.01"
+                                       style="width:80px;">
+                                <button type="submit" class="button button-small">
+                                    <?php esc_html_e( 'Save', 'sawe-msc' ); ?>
+                                </button>
+                            </form>
+                        </td>
+                        <td><?php echo wc_price( $row->initial_amount ); ?></td>
+                        <td><?php echo esc_html( $awarded_dt ); ?></td>
+                        <td><?php echo esc_html( $updated_dt ); ?></td>
+                        <td><?php echo esc_html( $renewed_dt ); ?></td>
+                        <td><?php echo esc_html( $next_dt ); ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * Fetch all user credit rows joined with WordPress user data.
+     *
+     * Returns every row regardless of balance so admins can see spent credits too.
+     * Ordered by credit definition then username for easy scanning.
+     *
+     * @return object[]  stdClass rows with all table columns plus user_login and display_name.
+     */
+    private function get_all_credit_rows(): array {
+        global $wpdb;
+        $table = SAWE_MSC_DB::user_credits_table();
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        return $wpdb->get_results(
+            "SELECT uc.*, u.user_login, u.display_name
+             FROM {$table} uc
+             INNER JOIN {$wpdb->users} u ON u.ID = uc.user_id
+             ORDER BY uc.credit_post_id ASC, u.user_login ASC"
+        ) ?: [];
+    }
+
+    /**
+     * Stream a CSV of all user credit rows directly to the browser.
+     *
+     * Sets Content-Type and Content-Disposition headers, writes a UTF-8 BOM
+     * for Excel compatibility, then outputs one row per user-credit record.
+     * Exits after writing — must be called before any page output.
+     *
+     * @return void
+     */
+    private function stream_credits_csv(): void {
+        $rows        = $this->get_all_credit_rows();
+        $date_format = 'Y-m-d';
+
+        // Cache credit post titles to avoid per-row get_the_title() calls.
+        $credit_titles = [];
+        foreach ( $rows as $row ) {
+            $cpid = (int) $row->credit_post_id;
+            if ( ! isset( $credit_titles[ $cpid ] ) ) {
+                $credit_titles[ $cpid ] = get_the_title( $cpid );
+            }
+        }
+
+        header( 'Content-Type: text/csv; charset=utf-8' );
+        header( 'Content-Disposition: attachment; filename="store-credits-' . gmdate( 'Y-m-d' ) . '.csv"' );
+        header( 'Pragma: no-cache' );
+        header( 'Expires: 0' );
+
+        $out = fopen( 'php://output', 'w' );
+
+        // BOM so Excel opens the file as UTF-8 without a manual import step.
+        fputs( $out, "\xEF\xBB\xBF" );
+
+        fputcsv( $out, [
+            'Credit Name',
+            'Username',
+            'Display Name',
+            'Current Balance',
+            'Initial Balance',
+            'Created',
+            'Last Updated',
+            'Last Renewal',
+            'Next Renewal',
+        ] );
+
+        foreach ( $rows as $row ) {
+            $cpid    = (int) $row->credit_post_id;
+            $next_dt = SAWE_MSC_Credit_Post_Type::get_next_renewal_date( $cpid );
+
+            fputcsv( $out, [
+                $credit_titles[ $cpid ] ?? '',
+                $row->user_login,
+                $row->display_name,
+                number_format( (float) $row->balance,        2, '.', '' ),
+                number_format( (float) $row->initial_amount, 2, '.', '' ),
+                $row->awarded_at   ? gmdate( $date_format, strtotime( $row->awarded_at ) )   : '',
+                $row->last_updated ? gmdate( $date_format, strtotime( $row->last_updated ) ) : '',
+                $row->renewed_at   ? gmdate( $date_format, strtotime( $row->renewed_at ) )   : '',
+                $next_dt ? $next_dt->format( $date_format ) : '',
+            ] );
+        }
+
+        fclose( $out );
     }
 }

@@ -155,7 +155,8 @@ class SAWE_MSC_User_Credits {
      *   - If user HAS a required role AND has no DB row → award_credit()
      *   - If user HAS a required role AND already has a row → do nothing
      *     (balance is managed by cart/checkout, not here)
-     *   - If user LACKS all required roles AND has a positive balance → remove_credit()
+     *   - If user LACKS all required roles → do nothing (balance is preserved so
+     *     it is automatically restored if the role is re-added later)
      *
      * This method is intentionally idempotent — calling it multiple times
      * for the same user in the same request is safe (though slightly wasteful).
@@ -189,12 +190,11 @@ class SAWE_MSC_User_Credits {
                     SAWE_MSC_DB::award_credit( $credit_post->ID, $user_id, (float) $meta['initial_amount'] );
                 }
                 // If a row exists, leave it alone — their ongoing balance is correct.
-            } else {
-                if ( $row && (float) $row->balance > 0 ) {
-                    // User was eligible before but isn't anymore. Zero out their balance.
-                    SAWE_MSC_DB::remove_credit( $credit_post->ID, $user_id );
-                }
             }
+            // If the user lacks the required role, their balance is left untouched.
+            // get_active_credits_for_user() filters by role at display time, so
+            // the credit will not appear in cart, checkout, or My Account until
+            // the role is restored.
         }
     }
 
@@ -253,7 +253,9 @@ class SAWE_MSC_User_Credits {
                         (float) $meta['initial_amount']
                     );
                 }
-                // Users without the role are left as-is (balance already 0 from sync_user).
+                // Users without the role are skipped — their balance is preserved
+                // and will be renewed the next time the renewal cron runs while
+                // they hold the required role.
             }
         }
     }
@@ -269,9 +271,11 @@ class SAWE_MSC_User_Credits {
      * and the calculated next renewal date into a single, convenient structure
      * that all display and calculation code can consume.
      *
-     * Filtering: includes ALL rows from the DB (even balance = 0) as long as the
-     * associated credit post is published. This allows the Account page to show
-     * spent credits. Cart code checks balance > 0 itself before injecting a fee.
+     * Filtering: includes rows where the associated credit post is published AND
+     * the user currently holds a required role. Credits for which the user's role
+     * has been removed are silently excluded — their balance is preserved in the
+     * DB and will reappear automatically if the role is re-added. Cart code
+     * additionally checks balance > 0 before injecting a fee.
      *
      * Return shape per entry:
      * [
@@ -290,6 +294,9 @@ class SAWE_MSC_User_Credits {
         $rows   = SAWE_MSC_DB::get_credits_for_user( $user_id );
         $result = [];
 
+        $user       = get_userdata( $user_id );
+        $user_roles = $user ? (array) $user->roles : [];
+
         foreach ( $rows as $row ) {
             // Skip credits whose post has been trashed, moved to draft, etc.
             $post = get_post( (int) $row->credit_post_id );
@@ -297,7 +304,15 @@ class SAWE_MSC_User_Credits {
                 continue;
             }
 
-            $meta     = SAWE_MSC_Credit_Post_Type::get_credit_meta( (int) $row->credit_post_id );
+            $meta           = SAWE_MSC_Credit_Post_Type::get_credit_meta( (int) $row->credit_post_id );
+            $required_roles = (array) $meta['roles'];
+
+            // If the credit requires specific roles, skip it when the user no
+            // longer holds any of them. The balance remains intact in the DB.
+            if ( ! empty( $required_roles ) && empty( array_intersect( $user_roles, $required_roles ) ) ) {
+                continue;
+            }
+
             $result[] = [
                 'row'     => $row,
                 'post'    => $post,

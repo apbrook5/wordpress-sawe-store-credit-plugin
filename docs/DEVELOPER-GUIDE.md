@@ -1,8 +1,8 @@
 # SAWE Membership Store Credits — Developer Guide
 
 > **Audience:** Developers who need to install, configure, extend, debug, or upgrade this plugin.
-> **Plugin version documented:** 1.1.0
-> **Last updated:** 2026-03
+> **Plugin version documented:** 1.1.2
+> **Last updated:** 2026-03-16
 
 ---
 
@@ -206,7 +206,7 @@ Bootstrap singleton. Loads all files, registers activation/deactivation hooks, a
 | `award_credit()` | `(int, int, float): bool` | Inserts or resets balance on renewal |
 | `deduct_credit()` | `(int, int, float): bool` | Subtracts amount, clamped to 0 |
 | `restore_credit()` | `(int, int, float): bool` | Adds amount back, capped at `initial_amount` |
-| `remove_credit()` | `(int, int): bool` | Zeros balance (role removed) |
+| `remove_credit()` | `(int, int): bool` | Zeros balance (available for admin/programmatic use; no longer called automatically when a role is removed) |
 | `get_all_rows_for_credit()` | `(int): object[]` | All user rows for one credit (renewal cron) |
 
 ---
@@ -233,9 +233,9 @@ Bridges CPT config and the DB balance table.
 
 | Method | Signature | Purpose |
 |--------|-----------|---------|
-| `sync_user()` | `(int): void` | Awards new credits; zeroes on role removal |
-| `process_renewals()` | `(): void` | Cron callback — resets balances on renewal date |
-| `get_active_credits_for_user()` | `(int): array[]` | Returns enriched credit array for display/cart |
+| `sync_user()` | `(int): void` | Awards credits to newly eligible users; balance is **preserved** (not zeroed) when a role is removed |
+| `process_renewals()` | `(): void` | Cron callback — resets balances on renewal date for users who currently hold a required role |
+| `get_active_credits_for_user()` | `(int): array[]` | Returns enriched credit array for display/cart; **filters out credits where the user no longer holds the required role** |
 | `product_qualifies()` | `(int, array): bool` | Returns true if product is in qualifying list/category |
 
 ---
@@ -287,6 +287,7 @@ Registers the `/my-account/store-credits/` endpoint; adds "Available Store Credi
 | `check_role_restriction()` | Filter `woocommerce_coupon_is_valid` — blocks ineligible users |
 | `suppress_auto_apply_message()` | Filter `woocommerce_coupon_message` — silences auto-apply notices |
 | `maybe_auto_apply_coupons()` | Auto-applies eligible coupons on cart/checkout load |
+| `on_coupon_removed()` | Hook `woocommerce_removed_coupon` — adds code to `SESSION_COUPON_REMOVED` when WC removes a coupon by any means (including its own [Remove] link) |
 | `display_coupon_notices()` | Renders coupon info cards on cart (priority 15) and checkout (priority 6) |
 | `add_endpoint()` | Registers `available-coupons` rewrite endpoint |
 | `add_menu_item()` | Inserts "Available Coupons" tab in My Account nav |
@@ -304,7 +305,7 @@ Registers the `/my-account/store-credits/` endpoint; adds "Available Store Credi
 
 | Method | Purpose |
 |--------|---------|
-| `register_menus()` | Adds "SAWE Coupons and Credits" menu + "Settings" + "Coupons" sub-pages |
+| `register_menus()` | Adds "SAWE Coupons and Credits" menu + "Settings", "Coupons", "Active Store Credits" sub-pages |
 | `register_settings()` | Registers `sawe_msc_remove_tables_on_uninstall` option |
 | `render_settings_page()` | Renders the Settings page |
 | `add_meta_boxes()` | Adds "Store Credit Settings" meta box to CPT edit screen |
@@ -313,6 +314,10 @@ Registers the `/my-account/store-credits/` endpoint; adds "Available Store Credi
 | `columns()` | Adds Amount, Renewal Date, Eligible Roles columns to CPT list |
 | `column_content()` | Renders the data in each custom column |
 | `enqueue_scripts()` | Loads admin CSS + JS on `sawe_store_credit` screens |
+| `maybe_download_csv()` | Runs on `admin_init`; streams CSV and exits if download action is requested |
+| `render_active_credits_page()` | Renders the Active Store Credits table; handles inline balance save POSTs |
+| `get_all_credit_rows()` | Private — SQL join of user credits + WP users; returns all rows across all credit definitions |
+| `stream_credits_csv()` | Private — outputs CSV with BOM directly to `php://output` |
 
 ---
 
@@ -360,10 +365,12 @@ Registers the `/my-account/store-credits/` endpoint; adds "Available Store Credi
 | `woocommerce_account_dashboard` | `SAWE_MSC_Account` | default | Dashboard credit summary widget |
 | `woocommerce_account_store-credits_endpoint` | `SAWE_MSC_Account` | default | Store credits tab content |
 | `woocommerce_account_available-coupons_endpoint` | `SAWE_MSC_Coupons` | default | Available coupons tab content |
+| `woocommerce_removed_coupon` | `SAWE_MSC_Coupons` | default | Adds removed coupon code to `SESSION_COUPON_REMOVED` (catches WC native [Remove] link) |
 | `add_meta_boxes` | `SAWE_MSC_Admin` | default | Credit meta box |
 | `add_meta_boxes` | `SAWE_MSC_Coupon_Admin` | default | Coupon meta box |
 | `save_post` | `SAWE_MSC_Admin` | 10 | Saves credit meta |
 | `save_post` | `SAWE_MSC_Coupon_Admin` | 10 | Saves coupon meta |
+| `admin_init` | `SAWE_MSC_Admin` | default | Streams CSV download before page headers are sent |
 | `admin_enqueue_scripts` | `SAWE_MSC_Admin` | default | Admin CSS + JS on credit screens |
 | `admin_enqueue_scripts` | `SAWE_MSC_Coupon_Admin` | default | Admin CSS + JS on coupon screens |
 
@@ -387,7 +394,7 @@ Registers the `/my-account/store-credits/` endpoint; adds "Available Store Credi
 |-----|------|--------|---------|---------|
 | `sawe_msc_applied` | `array<int,float>` | `SAWE_MSC_Cart::apply_credits_to_cart()` | `SAWE_MSC_Checkout` | Credit post ID → discount reserved this page load |
 | `sawe_msc_removed` | `int[]` | `SAWE_MSC_Cart::ajax_remove_credit()` | `SAWE_MSC_Cart::apply_credits_to_cart()` | Credit post IDs user has removed this session |
-| `sawe_msc_coupon_removed` | `string[]` | `SAWE_MSC_Coupons::ajax_remove_coupon()` | `SAWE_MSC_Coupons::maybe_auto_apply_coupons()` | Coupon codes user has manually removed this session |
+| `sawe_msc_coupon_removed` | `string[]` | `SAWE_MSC_Coupons::ajax_remove_coupon()` and `on_coupon_removed()` (WC native [Remove] link) | `SAWE_MSC_Coupons::maybe_auto_apply_coupons()` | Coupon codes user has manually removed this session |
 
 All session keys are cleared on logout and after order placement.
 
@@ -526,7 +533,13 @@ User visits store page / logs in
 SAWE_MSC_User_Credits::sync_user()
   • For each published sawe_store_credit:
       – If user has matching role AND no DB row → award_credit()
-      – If user has no matching role AND balance > 0 → remove_credit()
+      – If user has no matching role → balance preserved in DB; credit
+        hidden at display time via get_active_credits_for_user() role check
+         │
+         ▼
+get_active_credits_for_user()
+  • Filters out credits where user lacks the required role
+  • Credits reappear automatically if the role is re-added later
          │
          ▼
 User adds qualifying product to cart
@@ -534,7 +547,7 @@ User adds qualifying product to cart
          ▼
 woocommerce_cart_calculate_fees (priority 20)
 SAWE_MSC_Cart::apply_credits_to_cart()
-  • Calculates qualifying_total from cart items
+  • Calculates qualifying_total from post-coupon cart item totals (line_total)
   • Determines discount = min(balance, qualifying_total)
   • Calls $cart->add_fee( label, -discount, taxable=false )
   • Saves { post_id: discount } to SESSION_APPLIED
@@ -588,14 +601,18 @@ SAWE_MSC_Coupons::display_coupon_notices()
       – Not applied + auto_apply + removed by user: "Re-apply Coupon" button
       – Not applied otherwise: "Apply Coupon" button
          │
-   ┌─────┴──────────────────────┐
-   │ User clicks Remove/Apply   │
-   │ AJAX → sawe_msc_remove/    │
-   │ apply_coupon                │
-   │ Updates SESSION_COUPON_    │
-   │ REMOVED, updates WC cart   │
-   │ Triggers WC refresh        │
-   └────────────────────────────┘
+   ┌─────┴────────────────────────────────┐
+   │ User clicks plugin Remove/Apply btn  │
+   │ AJAX → sawe_msc_remove/apply_coupon  │
+   │ Updates SESSION_COUPON_REMOVED       │
+   │ Triggers WC cart refresh             │
+   ├──────────────────────────────────────┤
+   │ User clicks WC native [Remove] link  │
+   │ woocommerce_removed_coupon fires     │
+   │ on_coupon_removed() adds code to     │
+   │ SESSION_COUPON_REMOVED — prevents    │
+   │ auto-apply from re-adding it         │
+   └──────────────────────────────────────┘
          │
          ▼
 woocommerce_coupon_is_valid (filter)
@@ -637,6 +654,10 @@ SAWE_MSC_Coupons::clear_session()
 1. Go to **SAWE Coupons and Credits → Store Credits → [credit name] → Edit**.
 2. In the **Eligible Member Roles** section, pick the role from the dropdown and click **Add Role**.
 3. Click **Update** to save.
+
+### View and edit all user credit balances
+
+Go to **SAWE Coupons and Credits → Active Store Credits**. The table shows every awarded credit across all users with inline balance editing. Click **Save** on any row to update the balance directly. Use **Download CSV** to export the full table.
 
 ### Manually award a credit to a user
 
@@ -730,9 +751,13 @@ register_post_meta( 'shop_coupon', '_sawe_msc_coupon_roles', [
 | Credit not awarded after login | User role not in credit's Eligible Roles | Check credit settings |
 | Credit not awarded | Credit post is in Draft | Publish the credit post |
 | Discount not showing at checkout | No qualifying products in cart | Verify product/category is in credit settings |
+| Discount not showing at checkout | User's role was removed | Credit is hidden until role is restored; balance is preserved |
+| "Applied to this order:" shows wrong amount | Coupon applied before credit | Fixed in 1.1.1 — qualifying total now uses post-coupon `line_total` |
 | Balance not deducted after order | Guest order (no `user_id`) | Expected — guests not supported |
 | "Available Store Credits" tab 404 | Rewrite rules stale | Settings → Permalinks → Save |
 | Cron not running | `DISABLE_WP_CRON = true` | Set up real cron: `*/5 * * * * wp cron event run --due-now` |
+| Active Store Credits page blank | No credits awarded yet | Award credits by having eligible users visit the store |
+| CSV download produces garbled text in Excel | BOM missing (not applicable — fixed) | Plugin outputs UTF-8 BOM automatically |
 
 ### Coupons *(new in 1.1.0)*
 
@@ -740,7 +765,7 @@ register_post_meta( 'shop_coupon', '_sawe_msc_coupon_roles', [
 |---------|-------------|-----|
 | Coupon not auto-applied | Cart is empty or has no qualifying items | Add qualifying products |
 | Coupon not auto-applied | User role doesn't match restriction | Check SAWE Coupon Settings → Eligible Roles |
-| Coupon not auto-applied | User manually removed it this session | Coupon appears with "Re-apply" button |
+| Coupon not auto-applied | User manually removed it this session (via plugin button or WC native [Remove] link) | Coupon appears with "Re-apply" button |
 | Coupon not auto-applied | `_sawe_msc_coupon_auto_apply` not set | Check checkbox in SAWE Coupon Settings |
 | Coupon not visible on cart | `_sawe_msc_coupon_display_cart` not set | Check checkbox |
 | Coupon not visible on cart | No qualifying items in cart | Per requirement: only shown when applicable |
@@ -751,6 +776,13 @@ register_post_meta( 'shop_coupon', '_sawe_msc_coupon_roles', [
 ---
 
 ## 18. Upgrade Notes
+
+### 1.1.x → 1.1.2
+
+- **No DB changes, no rewrite flush needed.**
+- **Credit balance preservation on role removal** — credits are no longer zeroed when a user's eligible role is removed. If you have users whose balances were previously zeroed due to role changes, you will need to manually restore their balances via **SAWE Coupons and Credits → Active Store Credits** or with `SAWE_MSC_DB::award_credit()`.
+- **Active Store Credits page** — new admin page available at **SAWE Coupons and Credits → Active Store Credits**. Inline balance editing and CSV export are available immediately with no configuration.
+- **WC native [Remove] coupon link** — now correctly prevents auto-reapply via the `woocommerce_removed_coupon` hook. No action required.
 
 ### 1.0.x → 1.1.0
 

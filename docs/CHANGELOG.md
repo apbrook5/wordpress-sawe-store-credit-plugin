@@ -6,12 +6,24 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.2] — 2026-03-16
+
+### Fixed
+- **Syntax error in `class-sawe-msc-user-credits.php`** — Missing closing brace on `if ( $has_role )` block introduced in 1.1.1 caused a PHP ParseError on every page load.
+
+---
+
 ## [1.1.1] — 2026-03-16
 
 ### Fixed
 - **Store credit "Applied to this order:" showing pre-coupon amount** — When a WooCommerce coupon was applied before the store credit, the qualifying product total was calculated from `line_subtotal` (pre-coupon price) instead of `line_total` (post-coupon price). The credit was therefore capped against the wrong (higher) amount. Now uses `line_total` so the credit and its displayed amount are both correctly bounded by what the customer actually owes after coupons.
 - **`WC_Coupon::COUPON_SUCCESS` undefined constant** — Corrected to `WC_Coupon::WC_COUPON_SUCCESS` in `class-sawe-msc-coupons.php`.
 - **WooCommerce native [Remove] coupon link re-applied by auto-apply** — Hooked `woocommerce_removed_coupon` (fires for all coupon removals, including WC's own cart-totals UI) to add the code to `SESSION_COUPON_REMOVED`, preventing `maybe_auto_apply_coupons()` from immediately re-adding it.
+
+- **Store credit balance zeroed when eligible role removed** — Balance is now preserved when a user's qualifying role is removed. The credit is hidden from cart, checkout, and My Account via a role check in `get_active_credits_for_user()`, and is automatically restored when the role is re-added. Previously, `sync_user()` called `remove_credit()` which destructively zeroed the balance.
+
+### Added
+- **Active Store Credits admin page** — New "Active Store Credits" submenu under SAWE Coupons and Credits. Displays a table of all awarded user credits with columns for Credit Name, Username (linked to WP profile), Display Name, Current Balance (inline-editable with Save button), Initial Balance, Created date, Last Updated date, Last Renewal date, and Next Renewal date. Includes a Download CSV button that exports the same data as a UTF-8 CSV file.
 
 ---
 
