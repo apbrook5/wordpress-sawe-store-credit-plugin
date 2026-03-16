@@ -330,11 +330,14 @@ class SAWE_MSC_Cart {
     // =========================================================================
 
     /**
-     * Calculate the total subtotal of all qualifying products in the cart.
+     * Calculate the total of all qualifying products in the cart after coupons.
      *
-     * 'line_subtotal' is the pre-discount, pre-tax item total for that line.
-     * Using this (rather than line_total which includes discounts) means the
-     * store credit competes fairly with other applied coupons.
+     * 'line_total' is the post-coupon, pre-tax item total for that line.
+     * Using line_total (rather than line_subtotal) ensures the credit is capped
+     * at what the customer actually owes for qualifying items after any coupon
+     * discounts have been applied. WC applies coupon discounts to line_total
+     * before firing woocommerce_cart_calculate_fees (priority 20), so the value
+     * is accurate at the time this method runs.
      *
      * For variable products: WC stores variation_id as a separate key when the
      * variation exists. We prefer variation_id over product_id so that category
@@ -356,7 +359,7 @@ class SAWE_MSC_Cart {
             $product_id = (int) ( $item['variation_id'] ?: $item['product_id'] );
 
             if ( SAWE_MSC_User_Credits::product_qualifies( $product_id, $meta ) ) {
-                $total += (float) $item['line_subtotal'];
+                $total += (float) $item['line_total'];
             }
         }
 
