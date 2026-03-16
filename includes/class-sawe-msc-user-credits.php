@@ -368,7 +368,29 @@ class SAWE_MSC_User_Credits {
             }
 
             $terms = wc_get_product_term_ids( $lookup_id, 'product_cat' );
-            if ( ! empty( array_intersect( $qualifying_cats, $terms ) ) ) {
+
+            // WooCommerce automatically propagates parent category terms onto products
+            // (e.g. a product in "Electronics > Laptops" also gets "Electronics" saved
+            // on it). Strip out any term that is an ancestor of another term in the list
+            // so that only the directly-assigned (leaf) categories remain. This prevents
+            // a credit configured for "Electronics" from applying to products that are
+            // only in a child category like "Laptops".
+            $leaf_terms = array_values( array_filter(
+                $terms,
+                function ( $term_id ) use ( $terms ) {
+                    foreach ( $terms as $other_id ) {
+                        if ( $other_id === $term_id ) {
+                            continue;
+                        }
+                        if ( in_array( $term_id, get_ancestors( $other_id, 'product_cat', 'taxonomy' ), true ) ) {
+                            return false; // $term_id is a propagated ancestor — exclude it.
+                        }
+                    }
+                    return true;
+                }
+            ) );
+
+            if ( ! empty( array_intersect( $qualifying_cats, $leaf_terms ) ) ) {
                 return true;
             }
         }

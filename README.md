@@ -1,6 +1,6 @@
 # SAWE Membership Store Credits
 
-**Version:** 1.0.8
+**Version:** 1.0.9
 **Requires WordPress:** 6.4+  
 **Requires WooCommerce:** 8.0+  
 **Requires PHP:** 8.0+

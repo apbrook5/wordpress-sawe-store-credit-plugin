@@ -6,6 +6,13 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.9] — 2026-03
+
+### Fixed
+- **Store credit applying to products in nested sub-categories** — Category matching is now strict. WooCommerce automatically propagates parent category terms onto products (e.g. a product in "Electronics → Laptops" also has "Electronics" stored on it). The category check now strips those propagated ancestor terms before comparing, so only products directly assigned to the configured category qualify.
+
+---
+
 ## [1.0.8] — 2026-03
 
 ### Fixed
