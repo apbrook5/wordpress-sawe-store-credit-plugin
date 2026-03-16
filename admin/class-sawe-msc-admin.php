@@ -143,8 +143,8 @@ class SAWE_MSC_Admin {
      */
     public function register_menus(): void {
         add_menu_page(
-            __( 'Store Credits', 'sawe-msc' ),   // Page <title>
-            __( 'Store Credits', 'sawe-msc' ),   // Sidebar menu label
+            __( 'SAWE Store Credits', 'sawe-msc' ),   // Page <title>
+            __( 'SAWE Store Credits', 'sawe-msc' ),   // Sidebar menu label
             'manage_woocommerce',                 // Required capability
             'sawe-msc-settings',                 // Menu slug (also used as page slug)
             [ $this, 'render_settings_page' ],   // Callback for this page's content
