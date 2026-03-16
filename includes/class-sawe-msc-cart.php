@@ -130,6 +130,10 @@ class SAWE_MSC_Cart {
         add_action( 'wp_ajax_sawe_msc_remove_credit',  [ $this, 'ajax_remove_credit' ] );
         add_action( 'wp_ajax_sawe_msc_restore_credit', [ $this, 'ajax_restore_credit' ] );
 
+        // ── Cart credit notice ────────────────────────────────────────────────
+        // Display the remove/re-apply buttons above the cart totals section.
+        add_action( 'woocommerce_before_cart_totals', [ $this, 'display_credit_notice_cart' ] );
+
         // ── Asset enqueueing ──────────────────────────────────────────────────
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
 
@@ -225,6 +229,97 @@ class SAWE_MSC_Cart {
         // Overwrite the session value on every recalculation so stale amounts
         // from a previous page load don't persist.
         WC()->session->set( self::SESSION_APPLIED, $new_applied );
+    }
+
+    // =========================================================================
+    // Cart credit notice (remove / re-apply buttons)
+    // =========================================================================
+
+    /**
+     * Render store-credit notice boxes above the cart totals section.
+     *
+     * Mirrors SAWE_MSC_Checkout::display_credit_notice() but hooks into the
+     * cart page via woocommerce_before_cart_totals.
+     *
+     * Hook: woocommerce_before_cart_totals
+     *
+     * @return void
+     */
+    public function display_credit_notice_cart(): void {
+        if ( ! is_user_logged_in() ) {
+            return;
+        }
+
+        $user_id = get_current_user_id();
+        $credits = SAWE_MSC_User_Credits::get_active_credits_for_user( $user_id );
+
+        if ( empty( $credits ) ) {
+            return;
+        }
+
+        $applied     = self::get_applied();
+        $removed_ids = $this->get_removed_ids();
+
+        echo '<div class="sawe-msc-credit-notice-wrap">';
+
+        foreach ( $credits as $credit ) {
+            $post_id        = (int) $credit['post']->ID;
+            $applied_amount = $applied[ $post_id ] ?? 0;
+            $is_removed     = in_array( $post_id, $removed_ids, true );
+            $renewal        = $credit['renewal']->format( 'F j, Y' );
+
+            printf( '<div class="sawe-msc-credit-box" data-credit-id="%d">', $post_id );
+
+            echo '<h4 class="sawe-msc-credit-title">' . esc_html( $credit['post']->post_title ) . '</h4>';
+
+            if ( $credit['post']->post_content ) {
+                echo '<p class="sawe-msc-credit-desc">' . wp_kses_post( $credit['post']->post_content ) . '</p>';
+            }
+
+            echo '<ul class="sawe-msc-credit-details">';
+
+            printf(
+                '<li><strong>%s</strong> %s</li>',
+                esc_html__( 'Available Balance:', 'sawe-msc' ),
+                wc_price( $credit['balance'] )
+            );
+
+            if ( $applied_amount > 0 && ! $is_removed ) {
+                printf(
+                    '<li><strong>%s</strong> %s</li>',
+                    esc_html__( 'Applied to this order:', 'sawe-msc' ),
+                    wc_price( $applied_amount )
+                );
+            }
+
+            printf(
+                '<li><strong>%s</strong> %s</li>',
+                esc_html__( 'Renews on:', 'sawe-msc' ),
+                esc_html( $renewal )
+            );
+
+            echo '</ul>';
+
+            if ( $applied_amount > 0 ) {
+                if ( $is_removed ) {
+                    printf(
+                        '<button type="button" class="sawe-msc-restore-btn button" data-credit-id="%d">%s</button>',
+                        $post_id,
+                        esc_html__( 'Re-apply Store Credit', 'sawe-msc' )
+                    );
+                } else {
+                    printf(
+                        '<button type="button" class="sawe-msc-remove-btn button" data-credit-id="%d">%s</button>',
+                        $post_id,
+                        esc_html__( 'Remove Store Credit', 'sawe-msc' )
+                    );
+                }
+            }
+
+            echo '</div>'; // .sawe-msc-credit-box
+        }
+
+        echo '</div>'; // .sawe-msc-credit-notice-wrap
     }
 
     // =========================================================================
