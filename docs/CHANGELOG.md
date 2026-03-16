@@ -6,6 +6,13 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.10] — 2026-03
+
+### Changed
+- **Admin edit screen — Credit Name and Member Description** — Replaced the standard WordPress title input and block editor (Gutenberg) with plain text inputs inside the Store Credit Settings meta box. The "Credit Name" text field maps to `post_title` and the "Member Description" textarea maps to `post_content`; the front-end My Account display is unchanged.
+
+---
+
 ## [1.0.9] — 2026-03
 
 ### Fixed

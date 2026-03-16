@@ -383,6 +383,43 @@ class SAWE_MSC_Admin {
         ?>
         <div class="sawe-msc-metabox">
 
+            <!-- ── Credit Name ─────────────────────────────────────────────── -->
+            <!--  Saved to: post_title                                          -->
+            <!--  Displayed as the credit heading on the My Account page.      -->
+            <div class="sawe-msc-field">
+                <label for="sawe_msc_credit_title">
+                    <strong><?php esc_html_e( 'Credit Name', 'sawe-msc' ); ?></strong>
+                </label>
+                <p class="description"><?php esc_html_e( 'The name of this store credit, shown to members.', 'sawe-msc' ); ?></p>
+                <input
+                    type="text"
+                    id="sawe_msc_credit_title"
+                    name="sawe_msc_credit_title"
+                    value="<?php echo esc_attr( $post->post_title ); ?>"
+                    style="width:100%"
+                >
+            </div>
+
+            <hr>
+
+            <!-- ── Member Description ──────────────────────────────────────── -->
+            <!--  Saved to: post_content                                        -->
+            <!--  Displayed below the credit name on the full My Account view. -->
+            <div class="sawe-msc-field">
+                <label for="sawe_msc_credit_description">
+                    <strong><?php esc_html_e( 'Member Description', 'sawe-msc' ); ?></strong>
+                </label>
+                <p class="description"><?php esc_html_e( 'Description shown to members on the My Account page (full view only).', 'sawe-msc' ); ?></p>
+                <textarea
+                    id="sawe_msc_credit_description"
+                    name="sawe_msc_credit_description"
+                    rows="4"
+                    style="width:100%"
+                ><?php echo esc_textarea( $post->post_content ); ?></textarea>
+            </div>
+
+            <hr>
+
             <!-- ── Admin Notes ─────────────────────────────────────────────── -->
             <!--  Saved to: _sawe_msc_admin_notes                              -->
             <!--  Shown to: admins only. Never rendered on the front-end.      -->
@@ -632,6 +669,18 @@ class SAWE_MSC_Admin {
         if ( ! current_user_can( 'edit_post', $post_id ) ) {
             return;
         }
+
+        // ── Save: Credit Name + Member Description ────────────────────────────
+        // These map to core post fields (post_title / post_content) rather than
+        // meta, so we use wp_update_post(). The action is temporarily removed to
+        // prevent an infinite save_post loop.
+        remove_action( 'save_post', [ $this, 'save_meta_boxes' ], 10 );
+        wp_update_post( [
+            'ID'           => $post_id,
+            'post_title'   => sanitize_text_field( wp_unslash( $_POST['sawe_msc_credit_title'] ?? '' ) ),
+            'post_content' => wp_kses_post( wp_unslash( $_POST['sawe_msc_credit_description'] ?? '' ) ),
+        ] );
+        add_action( 'save_post', [ $this, 'save_meta_boxes' ], 10, 2 );
 
         // ── Save: Admin Notes ─────────────────────────────────────────────────
         // wp_unslash removes WordPress's magic quotes; sanitize_textarea_field

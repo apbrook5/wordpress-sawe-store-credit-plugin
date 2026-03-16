@@ -117,7 +117,7 @@ class SAWE_MSC_Credit_Post_Type {
             'show_ui'         => true,   // Show in WP admin.
             'show_in_menu'    => 'sawe-msc-settings', // Parent menu slug from SAWE_MSC_Admin.
             'show_in_rest'    => true,   // Required for Gutenberg + REST API.
-            'supports'        => [ 'title', 'editor', 'revisions', 'custom-fields' ],
+            'supports'        => [ 'revisions', 'custom-fields' ],
             'capability_type' => 'post', // Uses standard post capabilities (edit_post, etc.).
             'map_meta_cap'    => true,
             'rewrite'         => false,  // No front-end URL, so no rewrite rules needed.
