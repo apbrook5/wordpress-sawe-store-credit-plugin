@@ -171,23 +171,20 @@ class SAWE_MSC_Checkout {
 
             echo '</ul>';
 
-            // Show action button only if there's an applicable discount.
-            if ( $applied_amount > 0 ) {
-                if ( $is_removed ) {
-                    // User previously clicked Remove — show Re-apply button.
-                    printf(
-                        '<button type="button" class="sawe-msc-restore-btn button" data-credit-id="%d">%s</button>',
-                        $post_id,
-                        esc_html__( 'Re-apply Store Credit', 'sawe-msc' )
-                    );
-                } else {
-                    // Credit is currently applied — show Remove button.
-                    printf(
-                        '<button type="button" class="sawe-msc-remove-btn button" data-credit-id="%d">%s</button>',
-                        $post_id,
-                        esc_html__( 'Remove Store Credit', 'sawe-msc' )
-                    );
-                }
+            if ( $is_removed ) {
+                // User manually removed this credit — always show Re-apply button.
+                printf(
+                    '<button type="button" class="sawe-msc-restore-btn button" data-credit-id="%d">%s</button>',
+                    $post_id,
+                    esc_html__( 'Re-apply Store Credit', 'sawe-msc' )
+                );
+            } elseif ( $applied_amount > 0 ) {
+                // Credit is currently applied — show Remove button.
+                printf(
+                    '<button type="button" class="sawe-msc-remove-btn button" data-credit-id="%d">%s</button>',
+                    $post_id,
+                    esc_html__( 'Remove Store Credit', 'sawe-msc' )
+                );
             }
 
             echo '</div>'; // .sawe-msc-credit-box

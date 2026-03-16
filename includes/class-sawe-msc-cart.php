@@ -124,6 +124,9 @@ class SAWE_MSC_Cart {
         // they are freshly calculated on the next page load / AJAX update.
         add_action( 'woocommerce_cart_item_removed',                     [ $this, 'on_cart_item_removed' ], 10, 2 );
         add_action( 'woocommerce_update_cart_action_cart_updated',       [ $this, 'on_cart_updated' ] );
+        // When the cart is explicitly emptied, reset removed credits so they
+        // auto-apply the next time the user adds qualifying products.
+        add_action( 'woocommerce_cart_emptied',                          [ $this, 'on_cart_emptied' ] );
 
         // ── AJAX handlers ─────────────────────────────────────────────────────
         // wp_ajax_ prefix: only runs for logged-in users (correct — guests have no credits).
@@ -300,20 +303,20 @@ class SAWE_MSC_Cart {
 
             echo '</ul>';
 
-            if ( $applied_amount > 0 ) {
-                if ( $is_removed ) {
-                    printf(
-                        '<button type="button" class="sawe-msc-restore-btn button" data-credit-id="%d">%s</button>',
-                        $post_id,
-                        esc_html__( 'Re-apply Store Credit', 'sawe-msc' )
-                    );
-                } else {
-                    printf(
-                        '<button type="button" class="sawe-msc-remove-btn button" data-credit-id="%d">%s</button>',
-                        $post_id,
-                        esc_html__( 'Remove Store Credit', 'sawe-msc' )
-                    );
-                }
+            if ( $is_removed ) {
+                // User manually removed this credit — always show Re-apply button.
+                printf(
+                    '<button type="button" class="sawe-msc-restore-btn button" data-credit-id="%d">%s</button>',
+                    $post_id,
+                    esc_html__( 'Re-apply Store Credit', 'sawe-msc' )
+                );
+            } elseif ( $applied_amount > 0 ) {
+                // Credit is currently applied — show Remove button.
+                printf(
+                    '<button type="button" class="sawe-msc-remove-btn button" data-credit-id="%d">%s</button>',
+                    $post_id,
+                    esc_html__( 'Remove Store Credit', 'sawe-msc' )
+                );
             }
 
             echo '</div>'; // .sawe-msc-credit-box
@@ -380,6 +383,28 @@ class SAWE_MSC_Cart {
      */
     public function on_cart_item_removed( string $cart_item_key, \WC_Cart $cart ): void {
         WC()->session->set( self::SESSION_APPLIED, [] );
+        // If the last item was just removed, clear the removed list so credits
+        // auto-apply when the user next adds qualifying products.
+        if ( $cart->is_empty() ) {
+            WC()->session->set( self::SESSION_REMOVED, [] );
+        }
+    }
+
+    /**
+     * Clear both session keys when the cart is explicitly emptied.
+     *
+     * Fires on 'woocommerce_cart_emptied' (e.g. the "Clear cart" button).
+     * Ensures removed credits auto-apply fresh on the next cart visit.
+     *
+     * Hook: woocommerce_cart_emptied
+     *
+     * @return void
+     */
+    public function on_cart_emptied(): void {
+        if ( WC()->session ) {
+            WC()->session->set( self::SESSION_APPLIED, [] );
+            WC()->session->set( self::SESSION_REMOVED, [] );
+        }
     }
 
     /**

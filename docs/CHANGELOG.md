@@ -6,6 +6,14 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.6] — 2026-03
+
+### Fixed
+- **Store credit not re-applying after cart is cleared** — `SESSION_REMOVED` is now cleared when the cart becomes empty (either by removing the last item or using the "Clear cart" button), so credits auto-apply again when the user next adds qualifying products.
+- **Re-apply button not shown after credit removal** — The "Re-apply Store Credit" button now appears immediately after the user removes a credit, regardless of whether a discount amount is currently calculated. Previously it only appeared when `applied_amount > 0`, which was never true right after removal.
+
+---
+
 ## [1.0.5] — 2026-03
 
 ### Changed
