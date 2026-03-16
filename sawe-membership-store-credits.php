@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: SAWE Membership Store Credits
- * Plugin URI:  https://southeast.sawe.org
+ * Plugin URI:  https://www.sawe.org
  * Description: Provides renewable store credits to members based on WordPress roles, integrated with WooCommerce. Credits auto-apply at checkout, renew annually, and are fully configurable per role and qualifying product.
- * Version:     1.0.1
- * Author:      Southeast SAWE Chapter
- * Author URI:  https://southeast.sawe.org
+ * Version:     1.0.5
+ * Author:      Society of Allied Weight Engineers, Inc.
+ * Author URI:  https://www.sawe.org
  * License:     GPL-2.0+
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: sawe-msc
@@ -59,7 +59,7 @@ defined( 'ABSPATH' ) || exit; // Block direct HTTP access to this file.
 // ============================================================================
 
 /** Plugin semantic version. Bump in sync with the Version: header above. */
-define( 'SAWE_MSC_VERSION',     '1.0.1' );
+define( 'SAWE_MSC_VERSION',     '1.0.5' );
 
 /** Absolute path to sawe-membership-store-credits.php (this file). */
 define( 'SAWE_MSC_PLUGIN_FILE', __FILE__ );

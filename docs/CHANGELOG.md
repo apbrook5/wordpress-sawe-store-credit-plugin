@@ -6,10 +6,11 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.0.4] — 2026-03
+## [1.0.5] — 2026-03
 
 ### Changed
 - Reduced the store credit display box size by 25% via `font-size: 0.75em` on `.sawe-msc-credit-box`, proportionally scaling all internal padding, margins, and text.
+- Synced `SAWE_MSC_VERSION` constant with the `Version:` plugin header (both now `1.0.5`).
 
 ---
 
