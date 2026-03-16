@@ -6,6 +6,26 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.0] — 2026-03
+
+### Added
+- **SAWE Coupons system** — Extends WooCommerce's native coupon system with role-based restrictions, auto-apply behaviour, and contextual display. The following features are added to any WC coupon via a new "SAWE Coupon Settings" meta box on the coupon edit screen:
+  - **Eligible Member Roles** — Restrict a coupon to specific WordPress roles using the same tag-chip UI as store credits. If no roles are configured, the coupon remains available to all users.
+  - **Show in My Account → Available Coupons** — Displays the coupon code and details in a new "Available Coupons" tab on the WooCommerce My Account page, allowing members to discover and copy their exclusive codes.
+  - **Show on Cart and Checkout** — Renders an info card for the coupon above the cart totals and checkout form, but only when the coupon applies to items in the current cart and the user has an eligible role.
+  - **Auto-apply** — Automatically applies the coupon to the cart when conditions are met. The user may remove or re-apply it with action buttons, mirroring the store credit UX.
+- **Admin sidebar renamed** — "SAWE Store Credits" top-level menu is renamed to "SAWE Coupons and Credits".
+- **Coupons submenu link** — A new "Coupons" item appears under the SAWE Coupons and Credits menu, linking directly to the WooCommerce coupon list (`edit.php?post_type=shop_coupon`).
+- **Available Coupons My Account tab** — A new `/my-account/available-coupons/` endpoint lists all role-eligible, non-expired coupons that have the "Show in My Account" option enabled.
+- **New files**: `includes/class-sawe-msc-coupons.php`, `admin/class-sawe-msc-coupon-admin.php`, `public/js/sawe-msc-coupons.js`.
+
+### Changed
+- Plugin description updated to reference both store credits and role-based coupons.
+- `public/css/sawe-msc-public.css` — Added coupon card and action button styles (green palette to distinguish from credit blue).
+- `admin/js/sawe-msc-admin.js` — Added `coupon-roles` entry to the tag-chip list-manager configuration so the roles picker works on coupon edit screens.
+
+---
+
 ## [1.0.10] — 2026-03
 
 ### Changed

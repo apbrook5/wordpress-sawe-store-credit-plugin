@@ -143,8 +143,8 @@ class SAWE_MSC_Admin {
      */
     public function register_menus(): void {
         add_menu_page(
-            __( 'SAWE Store Credits', 'sawe-msc' ),   // Page <title>
-            __( 'SAWE Store Credits', 'sawe-msc' ),   // Sidebar menu label
+            __( 'SAWE Coupons and Credits', 'sawe-msc' ),   // Page <title>
+            __( 'SAWE Coupons and Credits', 'sawe-msc' ),   // Sidebar menu label
             'manage_woocommerce',                 // Required capability
             'sawe-msc-settings',                 // Menu slug (also used as page slug)
             [ $this, 'render_settings_page' ],   // Callback for this page's content
@@ -162,6 +162,18 @@ class SAWE_MSC_Admin {
             'manage_woocommerce',
             'sawe-msc-settings',                 // Same slug = replaces parent item
             [ $this, 'render_settings_page' ]
+        );
+
+        // Add a "Coupons" sub-page that links to the WooCommerce coupon list.
+        // Using the WC coupon list URL as the slug creates a direct nav link.
+        // Admins can then edit individual coupons to set SAWE-specific options
+        // via the "SAWE Coupon Settings" meta box added by SAWE_MSC_Coupon_Admin.
+        add_submenu_page(
+            'sawe-msc-settings',                           // Parent menu slug
+            __( 'Coupons', 'sawe-msc' ),                   // Page <title>
+            __( 'Coupons', 'sawe-msc' ),                   // Sub-menu label
+            'manage_woocommerce',
+            'edit.php?post_type=shop_coupon'               // Links to WC coupon list
         );
     }
 

@@ -170,3 +170,142 @@
 .sawe-msc-restore-btn:hover {
     background: #b8dfc4;
 }
+
+
+/* ============================================================================
+   COUPON NOTICE SECTION
+   Wraps all coupon boxes rendered by SAWE_MSC_Coupons::display_coupon_notices()
+   on the cart and checkout pages, and endpoint_content() on My Account.
+   ============================================================================ */
+.sawe-msc-coupon-notice-wrap {
+    margin: 0 0 1.5em;
+}
+
+/* Section heading displayed above the coupon boxes on cart/checkout. */
+.sawe-msc-coupon-section-title {
+    margin:      0 0 .75em;
+    font-size:   1em;
+    font-weight: 700;
+    color:       #1a3a5c;
+}
+
+
+/* ============================================================================
+   COUPON CARD  (.sawe-msc-coupon-box)
+   Visual design mirrors the credit box but uses a green accent to distinguish
+   coupons from store credits at a glance.
+
+   Colors:
+     Background #f0fff4  — pale green, distinct from credits' pale blue
+     Border     #28a745  — green, signals "savings available"
+   ============================================================================ */
+.sawe-msc-coupon-box {
+    background-color: #f0fff4;
+    border:           2px solid #28a745;
+    border-radius:    6px;
+    padding:          1em 1.25em;
+    margin-bottom:    1em;
+    font-family:      inherit;
+    font-size:        0.75em;
+    color:            #1a1a1a;
+}
+
+.sawe-msc-coupon-box:last-child {
+    margin-bottom: 0;
+}
+
+
+/* ============================================================================
+   COUPON TITLE  (.sawe-msc-coupon-title)
+   ============================================================================ */
+.sawe-msc-coupon-title {
+    margin:      0 0 .4em;
+    font-size:   1.1em;
+    font-weight: 700;
+    color:       #155724; /* dark green */
+}
+
+
+/* ============================================================================
+   COUPON DESCRIPTION  (.sawe-msc-coupon-desc)
+   ============================================================================ */
+.sawe-msc-coupon-desc {
+    margin:    0 0 .75em;
+    font-size: .95em;
+    color:     #333;
+}
+
+
+/* ============================================================================
+   COUPON DETAILS LIST  (.sawe-msc-coupon-details)
+   ============================================================================ */
+.sawe-msc-coupon-details {
+    list-style: none;
+    margin:     0 0 .75em;
+    padding:    0;
+    font-size:  .95em;
+}
+
+.sawe-msc-coupon-details li {
+    margin-bottom: .25em;
+}
+
+.sawe-msc-coupon-details strong {
+    display:   inline-block;
+    min-width: 120px;
+    color:     #155724;
+}
+
+
+/* ============================================================================
+   COUPON CODE CHIP  (.sawe-msc-coupon-code)
+   Inline <code> element that shows the copyable coupon code string.
+   ============================================================================ */
+.sawe-msc-coupon-code {
+    background:    #d4edda;
+    border:        1px solid #28a745;
+    border-radius: 3px;
+    padding:       1px 6px;
+    font-family:   monospace;
+    font-size:     1.05em;
+    color:         #155724;
+    letter-spacing: .05em;
+}
+
+
+/* ============================================================================
+   COUPON ACTION BUTTONS
+   Apply and Remove share base styles; differentiated by colour.
+   ============================================================================ */
+.sawe-msc-coupon-apply-btn,
+.sawe-msc-coupon-remove-btn {
+    font-size:     .85em;
+    padding:       .3em .8em;
+    cursor:        pointer;
+    border-radius: 4px;
+    margin-top:    .25em;
+    border-width:  1px;
+    border-style:  solid;
+}
+
+/* Apply / Re-apply button — green / positive tone */
+.sawe-msc-coupon-apply-btn {
+    background:   #d4edda;
+    border-color: #28a745;
+    color:        #155724;
+}
+
+.sawe-msc-coupon-apply-btn:hover {
+    background: #b8dfc4;
+}
+
+/* Remove button — amber / warning tone */
+.sawe-msc-coupon-remove-btn {
+    background:   #fff3cd;
+    border-color: #c8a400;
+    color:        #7a5c00;
+}
+
+.sawe-msc-coupon-remove-btn:hover {
+    background: #ffeaa0;
+}

@@ -104,6 +104,17 @@
             dropdownId:'products-dropdown',
             inputName: 'sawe_msc_products[]',
         },
+
+        /**
+         * Eligible Member Roles manager — COUPON meta box.
+         * Used on shop_coupon edit screens (SAWE_MSC_Coupon_Admin).
+         * Saves to $_POST['sawe_msc_coupon_roles'][]
+         */
+        'coupon-roles': {
+            listId:    'coupon-roles-list',
+            dropdownId:'coupon-roles-dropdown',
+            inputName: 'sawe_msc_coupon_roles[]',
+        },
     };
 
 

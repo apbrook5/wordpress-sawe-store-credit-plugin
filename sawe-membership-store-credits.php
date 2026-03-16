@@ -2,8 +2,8 @@
 /**
  * Plugin Name: SAWE Membership Store Credits
  * Plugin URI:  https://www.sawe.org
- * Description: Provides renewable store credits to members based on WordPress roles, integrated with WooCommerce. Credits auto-apply at checkout, renew annually, and are fully configurable per role and qualifying product.
- * Version:     1.0.9
+ * Description: Provides renewable store credits and role-based coupons to members based on WordPress roles, integrated with WooCommerce. Credits and coupons auto-apply at checkout, renew annually, and are fully configurable per role and qualifying product.
+ * Version:     1.1.0
  * Author:      Society of Allied Weight Engineers, Inc.
  * Author URI:  https://www.sawe.org
  * License:     GPL-2.0+
@@ -59,7 +59,7 @@ defined( 'ABSPATH' ) || exit; // Block direct HTTP access to this file.
 // ============================================================================
 
 /** Plugin semantic version. Bump in sync with the Version: header above. */
-define( 'SAWE_MSC_VERSION',     '1.0.9' );
+define( 'SAWE_MSC_VERSION',     '1.1.0' );
 
 /** Absolute path to sawe-membership-store-credits.php (this file). */
 define( 'SAWE_MSC_PLUGIN_FILE', __FILE__ );
@@ -190,8 +190,14 @@ final class SAWE_Membership_Store_Credits {
         // My Account tab and dashboard widget.
         require_once SAWE_MSC_PLUGIN_DIR . 'includes/class-sawe-msc-account.php';
 
-        // Admin menus, meta boxes, list columns.
+        // Admin menus, meta boxes, list columns — store credits.
         require_once SAWE_MSC_PLUGIN_DIR . 'admin/class-sawe-msc-admin.php';
+
+        // Coupon frontend logic (role restriction, auto-apply, display, My Account tab).
+        require_once SAWE_MSC_PLUGIN_DIR . 'includes/class-sawe-msc-coupons.php';
+
+        // Coupon admin meta box on shop_coupon edit screens.
+        require_once SAWE_MSC_PLUGIN_DIR . 'admin/class-sawe-msc-coupon-admin.php';
     }
 
     // -------------------------------------------------------------------------
@@ -292,9 +298,13 @@ final class SAWE_Membership_Store_Credits {
         // My Account tab + dashboard widget.
         SAWE_MSC_Account::instance();
 
+        // Coupon role restriction, auto-apply, display, and My Account tab.
+        SAWE_MSC_Coupons::instance();
+
         // Admin UI — only loaded on admin requests to avoid front-end overhead.
         if ( is_admin() ) {
             SAWE_MSC_Admin::instance();
+            SAWE_MSC_Coupon_Admin::instance();
         }
     }
 }
@@ -314,10 +324,11 @@ register_activation_hook( __FILE__, function () {
     require_once plugin_dir_path( __FILE__ ) . 'includes/class-sawe-msc-db.php';
     SAWE_MSC_DB::create_tables();
 
-    // Flush rewrite rules so the /store-credits/ endpoint resolves immediately.
-    // SAWE_MSC_Account::add_endpoint() runs on init, which hasn't fired yet at
-    // activation time, so we must add it manually here before flushing.
-    add_rewrite_endpoint( 'store-credits', EP_ROOT | EP_PAGES );
+    // Flush rewrite rules so both My Account endpoints resolve immediately.
+    // The ::add_endpoint() methods run on init, which hasn't fired yet at
+    // activation time, so we register them manually here before flushing.
+    add_rewrite_endpoint( 'store-credits',     EP_ROOT | EP_PAGES );
+    add_rewrite_endpoint( 'available-coupons', EP_ROOT | EP_PAGES );
     flush_rewrite_rules();
 } );
 
