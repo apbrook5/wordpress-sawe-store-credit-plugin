@@ -18,6 +18,8 @@ name: Build WordPress Plugin Release
 # ============================================================================
 
 on:
+  permissions:
+    contents: write
   push:
     tags:
       - 'v*'
