@@ -6,6 +6,13 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.7] — 2026-03
+
+### Changed
+- Release zip (`sawe-membership-store-credits-{version}.zip`) now contains an unversioned internal folder (`sawe-membership-store-credits/`) so that uploading to WordPress replaces the existing plugin folder instead of creating a new one.
+
+---
+
 ## [1.0.6] — 2026-03
 
 ### Fixed

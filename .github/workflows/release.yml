@@ -75,6 +75,8 @@ jobs:
 
           # Create the zip from inside the build directory so the top-level
           # folder inside the zip is sawe-membership-store-credits/ (not build/).
+          # The zip has no version suffix so WordPress replaces the existing
+          # plugin folder instead of creating a new one on upload.
           cd build
           zip -r ../sawe-membership-store-credits-${{ env.VERSION }}.zip \
             sawe-membership-store-credits/
