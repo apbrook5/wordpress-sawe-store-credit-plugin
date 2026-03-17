@@ -3,7 +3,7 @@
  * Plugin Name: SAWE Membership Store Credits
  * Plugin URI:  https://github.com/apbrook5/wordpress-sawe-store-credit-plugin
  * Description: Provides renewable store credits and role-based coupons to members based on WordPress roles, integrated with WooCommerce. Credits and coupons auto-apply at checkout, renew annually, and are fully configurable per role and qualifying product.
- * Version:     1.1.3
+ * Version:     1.1.4
  * Author:      Society of Allied Weight Engineers, Inc.
  * Author URI:  https://www.sawe.org
  * License:     GPL-2.0+
@@ -59,7 +59,7 @@ defined( 'ABSPATH' ) || exit; // Block direct HTTP access to this file.
 // ============================================================================
 
 /** Plugin semantic version. Bump in sync with the Version: header above. */
-define( 'SAWE_MSC_VERSION',     '1.1.3' );
+define( 'SAWE_MSC_VERSION',     '1.1.4' );
 
 /** Absolute path to sawe-membership-store-credits.php (this file). */
 define( 'SAWE_MSC_PLUGIN_FILE', __FILE__ );

@@ -391,6 +391,19 @@ class SAWE_MSC_Coupons {
                 );
             }
 
+            $limit_per_user = $coupon->get_usage_limit_per_user();
+            if ( $limit_per_user > 0 ) {
+                $user_id       = get_current_user_id();
+                $used_by       = $coupon->get_used_by();
+                $user_used     = count( array_filter( $used_by, fn( $id ) => (int) $id === $user_id ) );
+                $user_remaining = max( 0, $limit_per_user - $user_used );
+                printf(
+                    '<li><strong>%s</strong> %s</li>',
+                    esc_html__( 'Your uses remaining:', 'sawe-msc' ),
+                    esc_html( number_format_i18n( $user_remaining ) )
+                );
+            }
+
             echo '</ul>';
 
             // Action button.
@@ -544,6 +557,19 @@ class SAWE_MSC_Coupons {
                     '<li><strong>%s</strong> %s</li>',
                     esc_html__( 'Uses remaining:', 'sawe-msc' ),
                     esc_html( number_format_i18n( $remaining ) )
+                );
+            }
+
+            $limit_per_user = $coupon->get_usage_limit_per_user();
+            if ( $limit_per_user > 0 ) {
+                $user_id        = get_current_user_id();
+                $used_by        = $coupon->get_used_by();
+                $user_used      = count( array_filter( $used_by, fn( $id ) => (int) $id === $user_id ) );
+                $user_remaining = max( 0, $limit_per_user - $user_used );
+                printf(
+                    '<li><strong>%s</strong> %s</li>',
+                    esc_html__( 'Your uses remaining:', 'sawe-msc' ),
+                    esc_html( number_format_i18n( $user_remaining ) )
                 );
             }
 

@@ -1,7 +1,7 @@
 # SAWE Membership Store Credits — Developer Guide
 
 > **Audience:** Developers who need to install, configure, extend, debug, or upgrade this plugin.
-> **Plugin version documented:** 1.1.3
+> **Plugin version documented:** 1.1.4
 > **Last updated:** 2026-03-17
 
 ---
@@ -776,6 +776,11 @@ register_post_meta( 'shop_coupon', '_sawe_msc_coupon_roles', [
 ---
 
 ## 18. Upgrade Notes
+
+### 1.1.x → 1.1.4
+
+- **No DB changes, no rewrite flush needed.**
+- **Per-user uses remaining on coupon display** — When a coupon has a "Usage limit per user" set, a "Your uses remaining:" line is now shown in coupon details on cart/checkout and the My Account "Available Coupons" tab.
 
 ### 1.1.x → 1.1.3
 

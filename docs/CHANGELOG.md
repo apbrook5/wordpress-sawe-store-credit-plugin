@@ -6,6 +6,13 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.4] — 2026-03-17
+
+### Added
+- **Per-user uses remaining on coupon display** — When a coupon has a "Usage limit per user" set in WooCommerce, a "Your uses remaining:" line is now shown in the coupon details on the cart/checkout display and the My Account "Available Coupons" tab. The count is calculated from WooCommerce's own `_used_by` record for the current user.
+
+---
+
 ## [1.1.3] — 2026-03-17
 
 ### Added
