@@ -381,6 +381,16 @@ class SAWE_MSC_Coupons {
                 );
             }
 
+            $usage_limit = $coupon->get_usage_limit();
+            if ( $usage_limit > 0 ) {
+                $remaining = max( 0, $usage_limit - (int) $coupon->get_usage_count() );
+                printf(
+                    '<li><strong>%s</strong> %s</li>',
+                    esc_html__( 'Uses remaining:', 'sawe-msc' ),
+                    esc_html( number_format_i18n( $remaining ) )
+                );
+            }
+
             echo '</ul>';
 
             // Action button.
@@ -524,6 +534,16 @@ class SAWE_MSC_Coupons {
                     '<li><strong>%s</strong> %s</li>',
                     esc_html__( 'Expires:', 'sawe-msc' ),
                     esc_html( $coupon->get_date_expires()->date_i18n( get_option( 'date_format' ) ) )
+                );
+            }
+
+            $usage_limit = $coupon->get_usage_limit();
+            if ( $usage_limit > 0 ) {
+                $remaining = max( 0, $usage_limit - (int) $coupon->get_usage_count() );
+                printf(
+                    '<li><strong>%s</strong> %s</li>',
+                    esc_html__( 'Uses remaining:', 'sawe-msc' ),
+                    esc_html( number_format_i18n( $remaining ) )
                 );
             }
 

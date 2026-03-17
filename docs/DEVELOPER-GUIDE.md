@@ -1,8 +1,8 @@
 # SAWE Membership Store Credits — Developer Guide
 
 > **Audience:** Developers who need to install, configure, extend, debug, or upgrade this plugin.
-> **Plugin version documented:** 1.1.2
-> **Last updated:** 2026-03-16
+> **Plugin version documented:** 1.1.3
+> **Last updated:** 2026-03-17
 
 ---
 
@@ -446,7 +446,7 @@ All classes are prefixed `sawe-msc-` to avoid collisions.
 | `.sawe-msc-coupon-box` | `<div>` | Individual coupon card; pale green + green border |
 | `.sawe-msc-coupon-title` | `<h4>` | Coupon name heading |
 | `.sawe-msc-coupon-desc` | `<p>` | Coupon description paragraph |
-| `.sawe-msc-coupon-details` | `<ul>` | Discount / code / expiry list |
+| `.sawe-msc-coupon-details` | `<ul>` | Discount / code / expiry / uses-remaining list |
 | `.sawe-msc-coupon-code` | `<code>` | Inline chip showing the copyable coupon code |
 | `.sawe-msc-coupon-apply-btn` | `<button>` | "Apply Coupon" / "Re-apply Coupon" button (green) |
 | `.sawe-msc-coupon-remove-btn` | `<button>` | "Remove Coupon" button (amber) |
@@ -625,7 +625,7 @@ User visits My Account → Available Coupons
 SAWE_MSC_Coupons::endpoint_content()
   • Shows all display_account coupons user is eligible for
   • Excludes expired / usage-limit-reached coupons
-  • Displays coupon code, discount, expiry, product restrictions
+  • Displays coupon code, discount, expiry, uses remaining (if limited), product restrictions
          │
          ▼
 Order placed / session cleared
@@ -776,6 +776,11 @@ register_post_meta( 'shop_coupon', '_sawe_msc_coupon_roles', [
 ---
 
 ## 18. Upgrade Notes
+
+### 1.1.x → 1.1.3
+
+- **No DB changes, no rewrite flush needed.**
+- **Coupon uses remaining** — the coupon display on cart/checkout and the My Account "Available Coupons" tab now show a "Uses remaining:" line when a coupon has a global usage limit set. Coupons with no limit are unaffected.
 
 ### 1.1.x → 1.1.2
 

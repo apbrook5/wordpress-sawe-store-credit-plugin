@@ -6,6 +6,13 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.3] — 2026-03-17
+
+### Added
+- **Remaining uses on coupon display** — When a coupon has a global usage limit set, a "Uses remaining:" line is now shown in the coupon details on the cart/checkout display and the My Account "Available Coupons" tab.
+
+---
+
 ## [1.1.2] — 2026-03-16
 
 ### Fixed
