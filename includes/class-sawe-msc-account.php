@@ -100,6 +100,9 @@ class SAWE_MSC_Account {
 
         // Load our public CSS on any My Account page (tab or dashboard).
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_styles' ] );
+
+        // Load our public JS on any My Account page (search filter etc.).
+        add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
     }
 
     // =========================================================================
@@ -204,6 +207,12 @@ class SAWE_MSC_Account {
             echo '<p>' . esc_html__( 'You currently have no store credits available.', 'sawe-msc' ) . '</p>';
             return;
         }
+
+        printf(
+            '<input type="search" id="sawe-msc-credit-search" class="sawe-msc-credit-search" placeholder="%s" data-no-results="%s">',
+            esc_attr__( 'Search credits…', 'sawe-msc' ),
+            esc_attr__( 'No credits match your search.', 'sawe-msc' )
+        );
 
         echo '<div class="sawe-msc-credit-notice-wrap">';
         foreach ( $credits as $credit ) {
@@ -335,6 +344,29 @@ class SAWE_MSC_Account {
             SAWE_MSC_PLUGIN_URL . 'public/css/sawe-msc-public.css',
             [],
             SAWE_MSC_VERSION
+        );
+    }
+
+    /**
+     * Enqueue the public JavaScript on My Account pages.
+     *
+     * Provides client-side credit search/filtering on the Store Credits tab.
+     *
+     * Hook: wp_enqueue_scripts
+     *
+     * @return void
+     */
+    public function enqueue_scripts(): void {
+        if ( ! is_account_page() ) {
+            return;
+        }
+
+        wp_enqueue_script(
+            'sawe-msc-account',
+            SAWE_MSC_PLUGIN_URL . 'public/js/sawe-msc-account.js',
+            [],
+            SAWE_MSC_VERSION,
+            true // load in footer
         );
     }
 }

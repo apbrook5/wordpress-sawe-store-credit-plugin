@@ -47,6 +47,39 @@
 
 
 /* ============================================================================
+   CREDIT SEARCH BOX
+   Shown above the credit cards on the "Available Store Credits" tab only.
+   ============================================================================ */
+.sawe-msc-credit-search {
+    display:       block;
+    width:         100%;
+    max-width:     340px;
+    margin-bottom: 1em;
+    padding:       .45em .75em;
+    font-size:     .9em;
+    font-family:   inherit;
+    border:        1px solid #c8a400;
+    border-radius: 4px;
+    background:    #fff;
+    color:         #1a1a1a;
+    box-sizing:    border-box;
+}
+
+.sawe-msc-credit-search:focus {
+    outline:      none;
+    border-color: #1a3a5c;
+    box-shadow:   0 0 0 2px rgba(26, 58, 92, .15);
+}
+
+/* "No credits match your search." notice */
+.sawe-msc-credit-no-results {
+    color:      #555;
+    font-style: italic;
+    margin:     .5em 0 0;
+}
+
+
+/* ============================================================================
    WRAPPER
    Contains all credit cards output by a single display call.
    Margin-bottom creates space before the checkout form fields below it.

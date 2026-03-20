@@ -1,6 +1,6 @@
 # SAWE Membership Store Credits
 
-**Version:** 1.0.9
+**Version:** 1.1.5
 **Requires WordPress:** 6.4+  
 **Requires WooCommerce:** 8.0+  
 **Requires PHP:** 8.0+
@@ -110,12 +110,19 @@ sawe-membership-store-credits/
 │   └── js/sawe-msc-admin.js
 └── public/
     ├── css/sawe-msc-public.css
-    └── js/sawe-msc-cart.js
+    └── js/
+        ├── sawe-msc-cart.js
+        └── sawe-msc-account.js
 ```
 
 ---
 
 ## Changelog
+
+See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full history.
+
+### 1.1.5
+- Added real-time search box to the "Available Store Credits" My Account tab
 
 ### 1.0.0
 - Initial release
