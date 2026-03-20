@@ -10,6 +10,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 - **Search box on Available Store Credits tab** — A text search input now appears above the credit cards on the My Account "Available Store Credits" tab. Typing filters cards in real time by credit name or description (case-insensitive). A "No credits match your search." notice is shown when nothing matches.
+- **Search bar on Active Store Credits admin page** — A search input above the credits table on the admin "Active Store Credits" page filters rows in real time by credit name, username, or display name (case-insensitive).
 
 ---
 

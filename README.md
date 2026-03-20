@@ -117,6 +117,51 @@ sawe-membership-store-credits/
 
 ---
 
+## Creating a Release
+
+Releases are built automatically by a GitHub Actions workflow whenever a version tag is pushed. The workflow produces a correctly named `.zip` file and attaches it to a GitHub Release as a downloadable asset.
+
+### Pre-release checklist
+
+Before tagging, make sure the following are in sync with the new version number:
+
+1. `Version:` header in `sawe-membership-store-credits.php`
+2. `SAWE_MSC_VERSION` constant in `sawe-membership-store-credits.php`
+3. `**Version:**` in `README.md`
+4. `> **Plugin version documented:**` in `docs/DEVELOPER-GUIDE.md`
+5. New entry added to `docs/CHANGELOG.md`
+
+### Option A — tag push (command line)
+
+The tag **must** start with `v` (e.g. `v1.1.5`, not `1.1.5`) — the workflow only triggers on tags matching `v*`.
+
+```bash
+git tag v1.1.5
+git push origin v1.1.5
+```
+
+GitHub Actions will automatically:
+1. Build a clean plugin zip (`sawe-membership-store-credits-1.1.5.zip`)
+2. Create a GitHub Release named "Release v1.1.5" with auto-generated notes
+3. Attach the zip as a downloadable asset
+
+### Option B — GitHub website
+
+1. Go to the repository on GitHub and click **Releases → Draft a new release**.
+2. In the **Choose a tag** field, type the new tag — it **must** start with `v` (e.g. `v1.1.5`) — and select **Create new tag on publish**.
+3. Fill in a release title and description, then click **Publish release**.
+4. GitHub Actions will detect the published release, build the zip, and attach it automatically.
+
+### Installing the release zip in WordPress
+
+1. Download `sawe-membership-store-credits-{version}.zip` from the GitHub Release page.
+2. In the WordPress admin go to **Plugins → Add New → Upload Plugin**.
+3. Choose the zip file and click **Install Now**, then **Activate**.
+
+> **Note:** The zip contains the plugin in a folder named `sawe-membership-store-credits/` — the exact name WordPress expects. Uploading via the admin will replace any existing installation cleanly.
+
+---
+
 ## Changelog
 
 See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full history.

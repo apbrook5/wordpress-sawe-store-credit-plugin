@@ -1033,6 +1033,15 @@ class SAWE_MSC_Admin {
                 </a>
             </p>
 
+            <?php if ( ! empty( $rows ) ) : ?>
+            <p>
+                <input type="search"
+                       id="sawe-msc-credits-search"
+                       placeholder="<?php esc_attr_e( 'Search by credit name, username, or display name…', 'sawe-msc' ); ?>"
+                       style="width:360px;">
+            </p>
+            <?php endif; ?>
+
             <?php if ( empty( $rows ) ) : ?>
                 <p><?php esc_html_e( 'No store credits have been awarded yet.', 'sawe-msc' ); ?></p>
             <?php else : ?>
@@ -1066,7 +1075,7 @@ class SAWE_MSC_Admin {
                         $next_dt     = $cache['next_renewal']
                             ? $cache['next_renewal']->format( 'F j, Y' ) : '—';
                     ?>
-                    <tr>
+                    <tr data-search="<?php echo esc_attr( strtolower( $cache['title'] . ' ' . $row->user_login . ' ' . $row->display_name ) ); ?>">
                         <td><?php echo esc_html( $cache['title'] ); ?></td>
                         <td>
                             <a href="<?php echo esc_url( $profile_url ); ?>">
@@ -1101,6 +1110,19 @@ class SAWE_MSC_Admin {
 
             <?php endif; ?>
         </div>
+        <script>
+        ( function () {
+            var input = document.getElementById( 'sawe-msc-credits-search' );
+            if ( ! input ) { return; }
+            var rows = document.querySelectorAll( '.sawe-msc-credits-table tbody tr' );
+            input.addEventListener( 'input', function () {
+                var q = input.value.trim().toLowerCase();
+                rows.forEach( function ( tr ) {
+                    tr.style.display = ( ! q || tr.dataset.search.indexOf( q ) !== -1 ) ? '' : 'none';
+                } );
+            } );
+        } )();
+        </script>
         <?php
     }
 
