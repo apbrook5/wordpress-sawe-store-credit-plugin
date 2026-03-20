@@ -6,6 +6,13 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.6] — 2026-03-20
+
+### Added
+- **Release instructions in README** — Added a "Creating a Release" section documenting the pre-release checklist, how to trigger the GitHub Actions build via tag push or the GitHub website UI, and how to install the resulting zip in WordPress. Clarified that tags must be prefixed with `v` (e.g. `v1.1.6`) to trigger the workflow.
+
+---
+
 ## [1.1.5] — 2026-03-20
 
 ### Added
