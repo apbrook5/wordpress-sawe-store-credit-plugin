@@ -6,6 +6,14 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.7] — 2026-05-13
+
+### Fixed
+- **Fixed-amount coupon display** — The discount label (e.g. "$30.00 off") no longer renders raw HTML tags. `wc_price()` output is now stripped of markup before display.
+- **Auto-apply coupons not re-applied after cart changes** — The "manually removed" coupon session list is now cleared whenever an item is added or removed from the cart, so auto-apply coupons are re-evaluated against the updated cart contents.
+
+---
+
 ## [1.1.6] — 2026-03-20
 
 ### Added

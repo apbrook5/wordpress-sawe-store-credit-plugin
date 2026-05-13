@@ -154,8 +154,12 @@ class SAWE_MSC_Coupons {
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
 
         // ── Session cleanup ───────────────────────────────────────────────────
-        add_action( 'woocommerce_thankyou', [ $this, 'clear_session' ] );
-        add_action( 'wp_logout',            [ $this, 'clear_session' ] );
+        add_action( 'woocommerce_thankyou',          [ $this, 'clear_session' ] );
+        add_action( 'wp_logout',                     [ $this, 'clear_session' ] );
+        // Reset removed-coupon list when cart contents change so auto-apply
+        // coupons are re-evaluated against the new cart.
+        add_action( 'woocommerce_add_to_cart',       [ $this, 'clear_session' ] );
+        add_action( 'woocommerce_cart_item_removed', [ $this, 'clear_session' ] );
     }
 
     // =========================================================================
@@ -1009,7 +1013,7 @@ class SAWE_MSC_Coupons {
             case 'fixed_cart':
             case 'fixed_product':
                 /* translators: %s = formatted price with currency symbol */
-                return sprintf( __( '%s off', 'sawe-msc' ), wc_price( $amount ) );
+                return sprintf( __( '%s off', 'sawe-msc' ), wp_strip_all_tags( wc_price( $amount ) ) );
 
             case 'free_shipping':
                 return __( 'Free shipping', 'sawe-msc' );
