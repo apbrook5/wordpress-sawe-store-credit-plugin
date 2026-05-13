@@ -1,7 +1,7 @@
 # SAWE Membership Store Credits — Developer Guide
 
 > **Audience:** Developers who need to install, configure, extend, debug, or upgrade this plugin.
-> **Plugin version documented:** 1.1.6
+> **Plugin version documented:** 1.1.7
 > **Last updated:** 2026-03-20
 
 ---
