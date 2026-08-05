@@ -6,6 +6,16 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.0] — 2026-08-05
+
+### Added
+- **Companion plugin released alongside this version** — [SAWE MembershipWorks Role Sync](../sawe-membershipworks-roles/README.md) v1.2.0 is now released in this same repository and tagged together with this plugin under `v1.2.0`. It replaces the old "Add WordPress Roles based on MembershipWorks" code snippet with a database-backed diagnostic log and an admin screen nested under this plugin's "SAWE Coupons and Credits" menu. See `sawe-membershipworks-roles/docs/CHANGELOG.md` for its own history.
+
+### Changed
+- Version bump only for this plugin — no functional changes to SAWE Membership Store Credits itself in this release. Going forward, both plugins in this repository are versioned and tagged together so a single release always reflects a known-good pairing of the two.
+
+---
+
 ## [1.1.7] — 2026-05-13
 
 ### Fixed

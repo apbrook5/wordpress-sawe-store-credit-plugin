@@ -1,20 +1,25 @@
-name: Build WordPress Plugin Release
+name: Build WordPress Plugin Releases
 
 # ============================================================================
 # TRIGGER
 # ============================================================================
 # Runs automatically whenever a tag matching v* is pushed to the repo.
-# Examples: v1.0.0, v1.0.1, v2.0.0
+# Examples: v1.2.0, v1.2.1, v2.0.0
 #
 # To create a release:
-#   git tag v1.0.1
-#   git push origin v1.0.1
+#   git tag v1.2.0
+#   git push origin v1.2.0
 #
 # GitHub will then:
 #   1. Run this workflow.
-#   2. Build a correctly named sawe-membership-store-credits.zip
+#   2. Build sawe-membership-store-credits-{version}.zip AND
+#      sawe-membershipworks-roles-{version}.zip.
 #   3. Create a GitHub Release for the tag.
-#   4. Attach the zip as a downloadable asset on that release.
+#   4. Attach BOTH zips as downloadable assets on that release.
+#
+# Both plugins in this repository share a version number and a release, but
+# each zip is a fully self-contained, independently installable WordPress
+# plugin — installing/updating/removing one has no effect on the other.
 # ============================================================================
 
 on:
@@ -39,20 +44,20 @@ jobs:
         uses: actions/checkout@v4
 
       # ── 2. Extract the version number from the tag ─────────────────────────
-      # Strips the leading 'v' so v1.0.1 becomes 1.0.1.
+      # Strips the leading 'v' so v1.2.0 becomes 1.2.0.
       # Works for both push-tag and GitHub website release triggers.
-      # Stored as ${{ env.VERSION }} for use in later steps.
       - name: Set version from tag
         run: |
           TAG="${{ github.event.release.tag_name || github.ref_name }}"
           echo "VERSION=${TAG#v}" >> $GITHUB_ENV
 
-      # ── 3. Build the plugin zip ────────────────────────────────────────────
+      # ── 3. Build the SAWE Membership Store Credits zip ─────────────────────
       # Creates a folder named sawe-membership-store-credits (the exact name
-      # WordPress needs) containing only the plugin files — no .git history,
-      # no GitHub Actions folder, no dev-only files.
+      # WordPress needs) containing only that plugin's own files — no .git
+      # history, no GitHub Actions folder, and no files belonging to the
+      # sawe-membershipworks-roles plugin folder.
       #
-      # The resulting zip structure is:
+      # Resulting zip structure:
       #   sawe-membership-store-credits/
       #     sawe-membership-store-credits.php
       #     uninstall.php
@@ -61,56 +66,75 @@ jobs:
       #     includes/
       #     public/
       #     docs/
-      #
-      # WordPress unzips this and installs it as the plugin folder
-      # sawe-membership-store-credits — which matches the plugin's
-      # own directory references (SAWE_MSC_PLUGIN_DIR etc.).
-      - name: Build plugin zip
+      - name: Build SAWE Membership Store Credits zip
         run: |
-          # Create a clean staging directory with the correct plugin folder name
           mkdir -p build/sawe-membership-store-credits
 
-          # Copy all plugin files — explicitly list what to include so that
-          # dev/repo files (.git, .github, etc.) are never bundled.
           rsync -av \
             --exclude='.git' \
             --exclude='.github' \
+            --exclude='.vscode' \
             --exclude='build' \
             --exclude='*.zip' \
             --exclude='.DS_Store' \
             --exclude='node_modules' \
+            --exclude='sawe-membershipworks-roles' \
             ./ build/sawe-membership-store-credits/
 
-          # Create the zip from inside the build directory so the top-level
-          # folder inside the zip is sawe-membership-store-credits/ (not build/).
-          # The zip has no version suffix so WordPress replaces the existing
-          # plugin folder instead of creating a new one on upload.
           cd build
           zip -r ../sawe-membership-store-credits-${{ env.VERSION }}.zip \
             sawe-membership-store-credits/
-
           cd ..
+
           echo "Built: sawe-membership-store-credits-${{ env.VERSION }}.zip"
           unzip -l sawe-membership-store-credits-${{ env.VERSION }}.zip | head -40
 
-      # ── 4. Attach the zip to the GitHub Release ────────────────────────────
+      # ── 4. Build the SAWE MembershipWorks Role Sync zip ─────────────────────
+      # This plugin already lives in its own self-contained subfolder at the
+      # repo root, so we just copy that folder as-is (minus dev cruft) into a
+      # correctly-named staging directory and zip it.
+      #
+      # Resulting zip structure:
+      #   sawe-membershipworks-roles/
+      #     sawe-membershipworks-roles.php
+      #     uninstall.php
+      #     README.md
+      #     admin/
+      #     includes/
+      #     docs/
+      - name: Build SAWE MembershipWorks Role Sync zip
+        run: |
+          mkdir -p build/sawe-membershipworks-roles
+
+          rsync -av \
+            --exclude='.git' \
+            --exclude='.DS_Store' \
+            --exclude='node_modules' \
+            sawe-membershipworks-roles/ build/sawe-membershipworks-roles/
+
+          cd build
+          zip -r ../sawe-membershipworks-roles-${{ env.VERSION }}.zip \
+            sawe-membershipworks-roles/
+          cd ..
+
+          echo "Built: sawe-membershipworks-roles-${{ env.VERSION }}.zip"
+          unzip -l sawe-membershipworks-roles-${{ env.VERSION }}.zip | head -40
+
+      # ── 5. Attach both zips to the GitHub Release ──────────────────────────
       # If triggered by the GitHub website (release event), the release already
-      # exists — upload the asset to it. If triggered by a tag push, create the
-      # release first then attach the asset.
-      - name: Attach zip to GitHub Release
+      # exists — upload the assets to it. If triggered by a tag push, create
+      # the release first then attach both assets.
+      - name: Attach zips to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ github.event.release.tag_name || github.ref_name }}"
+          ASSETS="sawe-membership-store-credits-${{ env.VERSION }}.zip sawe-membershipworks-roles-${{ env.VERSION }}.zip"
           if gh release view "$TAG" > /dev/null 2>&1; then
-            # Release already exists (created via GitHub website) — just upload.
-            gh release upload "$TAG" \
-              sawe-membership-store-credits-${{ env.VERSION }}.zip \
-              --clobber
+            gh release upload "$TAG" $ASSETS --clobber
           else
-            # No release yet (triggered by tag push) — create it and attach.
             gh release create "$TAG" \
               --title "Release $TAG" \
               --generate-notes \
-              sawe-membership-store-credits-${{ env.VERSION }}.zip
+              $ASSETS
           fi
