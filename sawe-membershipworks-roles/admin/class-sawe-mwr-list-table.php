@@ -46,6 +46,7 @@ class SAWE_MWR_List_Table extends \WP_List_Table {
 	 */
 	public function get_columns(): array {
 		return array(
+			'cb'              => '<input type="checkbox" />',
 			'user_login'      => __( 'Username', 'sawe-mwr' ),
 			'display_name'    => __( 'Display Name', 'sawe-mwr' ),
 			'is_member'       => __( 'Member', 'sawe-mwr' ),
@@ -70,6 +71,17 @@ class SAWE_MWR_List_Table extends \WP_List_Table {
 			'is_member'       => array( 'is_member', false ),
 			'status'          => array( 'status', false ),
 			'last_checked_at' => array( 'last_checked_at', true ),
+		);
+	}
+
+	/**
+	 * Bulk actions available above/below the table.
+	 *
+	 * @return array<string,string>
+	 */
+	protected function get_bulk_actions(): array {
+		return array(
+			'delete' => __( 'Delete', 'sawe-mwr' ),
 		);
 	}
 
@@ -219,7 +231,22 @@ class SAWE_MWR_List_Table extends \WP_List_Table {
 	}
 
 	/**
-	 * Username column: links to the user's WordPress profile edit screen.
+	 * Checkbox column, used for bulk actions (currently just "Delete").
+	 *
+	 * @param object $item Current row.
+	 *
+	 * @return string
+	 */
+	protected function column_cb( $item ): string {
+		return sprintf( '<input type="checkbox" name="sawe_mwr_log_row[]" value="%d" />', (int) $item->id );
+	}
+
+	/**
+	 * Username column: links to the user's WordPress profile edit screen, and
+	 * carries the row's "Delete" action (see SAWE_MWR_Admin::handle_list_table_actions()).
+	 * Deleting the row forces the user to be re-checked on their next
+	 * login/page load, since maybe_sync_current_user() throttles only when a
+	 * log row already exists.
 	 *
 	 * @param object $item Current row.
 	 *
@@ -230,18 +257,34 @@ class SAWE_MWR_List_Table extends \WP_List_Table {
 
 		if ( empty( $edit_link ) ) {
 			// User account may have been deleted since the last check.
-			return sprintf(
+			$label = sprintf(
 				'%s <span class="description">(%s)</span>',
 				esc_html( $item->user_login ),
 				esc_html__( 'user not found', 'sawe-mwr' )
 			);
+		} else {
+			$label = sprintf(
+				'<a href="%s"><strong>%s</strong></a>',
+				esc_url( $edit_link ),
+				esc_html( $item->user_login )
+			);
 		}
 
-		return sprintf(
-			'<a href="%s"><strong>%s</strong></a>',
-			esc_url( $edit_link ),
-			esc_html( $item->user_login )
+		$delete_url = wp_nonce_url(
+			add_query_arg( array( 'action' => 'delete', 'id' => (int) $item->id ) ),
+			'sawe_mwr_delete_log_' . (int) $item->id
 		);
+
+		$actions = array(
+			'delete' => sprintf(
+				'<a href="%s" class="submitdelete" onclick="return confirm(\'%s\');">%s</a>',
+				esc_url( $delete_url ),
+				esc_js( __( 'Delete this log entry? The user will be re-checked on their next login.', 'sawe-mwr' ) ),
+				esc_html__( 'Delete', 'sawe-mwr' )
+			),
+		);
+
+		return $label . $this->row_actions( $actions );
 	}
 
 	/**

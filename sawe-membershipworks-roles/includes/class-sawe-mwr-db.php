@@ -178,6 +178,38 @@ class SAWE_MWR_DB {
 	}
 
 	/**
+	 * Delete one or more log rows by ID.
+	 *
+	 * Used by the admin list table's row "Delete" action and bulk action so an
+	 * admin can force a user to be re-checked on their next login/page load —
+	 * with no row present, maybe_sync_current_user() treats the user as never
+	 * checked and skips the throttle entirely.
+	 *
+	 * @param int[] $ids Row IDs (the table's own auto-increment `id` column,
+	 *                   not user_id) to delete.
+	 *
+	 * @return int Number of rows actually deleted.
+	 */
+	public static function delete_logs( array $ids ): int {
+		global $wpdb;
+
+		$ids = array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) );
+
+		if ( empty( $ids ) ) {
+			return 0;
+		}
+
+		$table        = self::table_name();
+		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name hard-coded, placeholders built from a fixed-length array of %d above.
+		$sql    = "DELETE FROM {$table} WHERE id IN ({$placeholders})";
+		$result = $wpdb->query( $wpdb->prepare( $sql, $ids ) );
+
+		return false === $result ? 0 : (int) $result;
+	}
+
+	/**
 	 * Query log rows for the admin list table, with search, error filtering,
 	 * sorting, and pagination.
 	 *

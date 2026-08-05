@@ -78,7 +78,7 @@ class SAWE_MWR_Admin {
 			);
 		}
 
-		add_submenu_page(
+		$hook = add_submenu_page(
 			SAWE_MWR_PARENT_MENU_SLUG,
 			__( 'MembershipWorks Sync Log', 'sawe-mwr' ),
 			__( 'MembershipWorks Sync Log', 'sawe-mwr' ),
@@ -86,6 +86,70 @@ class SAWE_MWR_Admin {
 			'sawe-mwr-log',
 			array( $this, 'render_log_page' )
 		);
+
+		// Process row/bulk delete actions on the page's own 'load-' hook, which
+		// fires before any admin chrome is output — so we can still
+		// wp_safe_redirect() afterward (render_log_page() itself runs too late
+		// for that, since WordPress has already sent the admin header HTML by
+		// the time a page callback runs).
+		if ( $hook ) {
+			add_action( "load-{$hook}", array( $this, 'handle_list_table_actions' ) );
+		}
+	}
+
+	// =========================================================================
+	// List table row/bulk actions (delete)
+	// =========================================================================
+
+	/**
+	 * Handle the "Delete" row action and "Delete" bulk action from the
+	 * MembershipWorks Sync Log list table. Deleting a log row simply removes
+	 * the throttle/diagnostic record for that user — SAWE_MWR_Role_Sync treats
+	 * a missing row as "never checked", so the user is re-evaluated against
+	 * MembershipWorks on their next login or page load.
+	 *
+	 * Redirects back to a clean URL (stripping the action/nonce query args)
+	 * afterward so a page refresh can't resubmit the deletion.
+	 *
+	 * @return void
+	 */
+	public function handle_list_table_actions(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$action = '';
+		if ( isset( $_REQUEST['action'] ) && '-1' !== $_REQUEST['action'] ) {
+			$action = sanitize_key( wp_unslash( $_REQUEST['action'] ) );
+		} elseif ( isset( $_REQUEST['action2'] ) && '-1' !== $_REQUEST['action2'] ) {
+			$action = sanitize_key( wp_unslash( $_REQUEST['action2'] ) );
+		}
+
+		if ( 'delete' !== $action ) {
+			return;
+		}
+
+		$deleted = 0;
+
+		if ( isset( $_REQUEST['sawe_mwr_log_row'] ) ) {
+			// Bulk delete, submitted via the list table's own bulk-action form.
+			check_admin_referer( 'bulk-sawe_mwr_log_rows' );
+			$ids     = array_map( 'absint', (array) wp_unslash( $_REQUEST['sawe_mwr_log_row'] ) );
+			$deleted = SAWE_MWR_DB::delete_logs( $ids );
+		} elseif ( isset( $_GET['id'] ) ) {
+			// Single-row delete, via the row action link.
+			$id = absint( $_GET['id'] );
+			check_admin_referer( 'sawe_mwr_delete_log_' . $id );
+			$deleted = SAWE_MWR_DB::delete_logs( array( $id ) );
+		} else {
+			return;
+		}
+
+		$redirect = remove_query_arg( array( 'action', 'action2', 'id', '_wpnonce', '_wp_http_referer', 'sawe_mwr_log_row' ) );
+		$redirect = add_query_arg( 'sawe_mwr_deleted', $deleted, $redirect );
+
+		wp_safe_redirect( $redirect );
+		exit;
 	}
 
 	// =========================================================================
@@ -132,6 +196,28 @@ class SAWE_MWR_Admin {
 			<p class="description">
 				<?php esc_html_e( 'Every MembershipWorks membership check performed by SAWE MembershipWorks Role Sync is logged here — one row per user, updated on each re-check. Members are re-checked at most once every 24 hours; non-members (or users with an unresolved error) are re-checked at most once every 5 minutes.', 'sawe-mwr' ); ?>
 			</p>
+
+			<?php if ( isset( $_GET['sawe_mwr_deleted'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only notice flag, actual deletion was already nonce-verified in handle_list_table_actions(). ?>
+				<?php $deleted_count = (int) $_GET['sawe_mwr_deleted']; // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
+				<div class="notice notice-success is-dismissible">
+					<p>
+						<?php
+						echo esc_html(
+							sprintf(
+								/* translators: %d: number of log entries deleted. */
+								_n(
+									'%d log entry deleted. The affected user will be re-checked against MembershipWorks on their next login.',
+									'%d log entries deleted. Affected users will be re-checked against MembershipWorks on their next login.',
+									$deleted_count,
+									'sawe-mwr'
+								),
+								$deleted_count
+							)
+						);
+						?>
+					</p>
+				</div>
+			<?php endif; ?>
 
 			<form method="get">
 				<input type="hidden" name="page" value="<?php echo esc_attr( isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : 'sawe-mwr-log' ); ?>">

@@ -8,6 +8,13 @@ This plugin is released from the same repository and under the same git tag as [
 
 ---
 
+## [1.2.1] — 2026-08-05
+
+### Added
+- "MembershipWorks Sync Log" admin screen: log rows can now be deleted, individually (row "Delete" action) or in bulk (checkbox + bulk action). Deleting a row clears the throttle/diagnostic record for that user, so `SAWE_MWR_Role_Sync` treats them as never checked and re-evaluates their MembershipWorks status on their next login or page load.
+
+---
+
 ## [1.2.0] — 2026-08-05
 
 ### Added

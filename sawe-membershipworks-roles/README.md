@@ -1,6 +1,6 @@
 # SAWE MembershipWorks Role Sync
 
-**Version:** 1.2.0
+**Version:** 1.2.1
 **Requires WordPress:** 6.4+
 **Requires PHP:** 8.0+
 **Depends on:** MembershipWorks (`memberfindme`) plugin being active for real membership checks. Degrades gracefully (logs an error, skips role changes) if it isn't.
@@ -88,6 +88,7 @@ Table: `{$wpdb->prefix}sawe_mwr_check_log` — one row per WordPress user, upser
 - Sortable columns: Username, Display Name, Member, Status, Last Checked.
 - Username links directly to that user's WordPress profile edit screen.
 - Raw MembershipWorks response viewable per-row via an expandable "View" control.
+- Rows can be deleted individually (row "Delete" action) or in bulk (checkbox + bulk action) — deleting a row clears that user's throttle record, so they're re-checked against MembershipWorks on their next login or page load.
 - A **Settings** section to opt in to removing the log table when the plugin is deleted (off by default — history is preserved through plugin deletion unless you check this box).
 
 ## File Structure
