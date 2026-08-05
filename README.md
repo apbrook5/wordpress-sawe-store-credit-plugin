@@ -1,6 +1,6 @@
 # SAWE Membership Store Credits
 
-**Version:** 1.2.0
+**Version:** 1.2.2
 **Requires WordPress:** 6.4+  
 **Requires WooCommerce:** 8.0+  
 **Requires PHP:** 8.0+
@@ -165,6 +165,9 @@ GitHub Actions will automatically:
 ## Changelog
 
 See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full history.
+
+### 1.2.2
+- Page-cache safety guards added to the cart, checkout, and My Account pages (`nocache_headers()` + `DONOTCACHEPAGE`) so a full-page cache can't serve one member's credit balance to another.
 
 ### 1.2.0
 - Version bump released alongside the new companion plugin [SAWE MembershipWorks Role Sync](https://github.com/apbrook5/wordpress-sawe-store-credit-plugin/tree/main/sawe-membershipworks-roles) (also v1.2.0), tagged and released together.

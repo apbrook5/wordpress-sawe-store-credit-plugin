@@ -6,6 +6,13 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.2] — 2026-08-05
+
+### Added
+- Page-cache safety guards on the cart, checkout, and My Account pages: `nocache_headers()` plus the `DONOTCACHEPAGE` constant are now set for logged-in users on those pages, since they render a member's real credit balance and applied-discount amount. Defense-in-depth against a full-page cache (e.g. WP Fastest Cache, a misconfigured reverse proxy/CDN) serving one member's balance to another. See `SAWE_MSC_Cart::maybe_prevent_page_cache()`, `SAWE_MSC_Checkout::maybe_prevent_page_cache()`, and `SAWE_MSC_Account::maybe_prevent_page_cache()`.
+
+---
+
 ## [1.2.0] — 2026-08-05
 
 ### Added

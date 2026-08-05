@@ -77,6 +77,12 @@ class SAWE_MSC_Checkout {
         // Priority 5: render before WC's own checkout notices (priority 10).
         add_action( 'woocommerce_before_checkout_form', [ $this, 'display_credit_notice' ], 5 );
 
+        // Page-cache safety: checkout renders a logged-in user's real balance
+        // and applied-discount amount. See SAWE_MSC_Cart::maybe_prevent_page_cache()
+        // for the full rationale — same defense-in-depth guard, applied here
+        // for the checkout page.
+        add_action( 'template_redirect', [ $this, 'maybe_prevent_page_cache' ] );
+
         // Commit deductions to DB when the order row is created.
         add_action( 'woocommerce_checkout_order_created', [ $this, 'finalise_deductions' ], 10, 1 );
 
@@ -89,6 +95,25 @@ class SAWE_MSC_Checkout {
     // =========================================================================
     // Display: credit notice box above checkout
     // =========================================================================
+
+    /**
+     * Send no-cache headers on the checkout page for logged-in users, since
+     * the page renders that user's real credit balance and applied-discount
+     * amount. See SAWE_MSC_Cart::maybe_prevent_page_cache() for the full
+     * rationale.
+     *
+     * Hook: template_redirect
+     *
+     * @return void
+     */
+    public function maybe_prevent_page_cache(): void {
+        if ( is_user_logged_in() && function_exists( 'is_checkout' ) && is_checkout() ) {
+            if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+                define( 'DONOTCACHEPAGE', true );
+            }
+            nocache_headers();
+        }
+    }
 
     /**
      * Render the store-credit summary notice box(es) above the checkout form.

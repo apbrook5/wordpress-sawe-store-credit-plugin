@@ -98,11 +98,41 @@ class SAWE_MSC_Account {
         // Also show a compact credit summary on the main My Account dashboard page.
         add_action( 'woocommerce_account_dashboard', [ $this, 'dashboard_widget' ] );
 
+        // Page-cache safety: every My Account page can render a logged-in
+        // user's real balance (the store-credits tab and/or the dashboard
+        // widget). See SAWE_MSC_Cart::maybe_prevent_page_cache() for the full
+        // rationale — same defense-in-depth guard, applied here account-wide
+        // via is_account_page() rather than a single endpoint.
+        add_action( 'template_redirect', [ $this, 'maybe_prevent_page_cache' ] );
+
         // Load our public CSS on any My Account page (tab or dashboard).
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_styles' ] );
 
         // Load our public JS on any My Account page (search filter etc.).
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
+    }
+
+    // =========================================================================
+    // Page-cache safety
+    // =========================================================================
+
+    /**
+     * Send no-cache headers on any My Account page for logged-in users, since
+     * the store-credits tab and/or dashboard widget render that user's real
+     * balance. See SAWE_MSC_Cart::maybe_prevent_page_cache() for the full
+     * rationale.
+     *
+     * Hook: template_redirect
+     *
+     * @return void
+     */
+    public function maybe_prevent_page_cache(): void {
+        if ( is_user_logged_in() && function_exists( 'is_account_page' ) && is_account_page() ) {
+            if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+                define( 'DONOTCACHEPAGE', true );
+            }
+            nocache_headers();
+        }
     }
 
     // =========================================================================

@@ -137,6 +137,16 @@ class SAWE_MSC_Cart {
         // Display the remove/re-apply buttons above the cart totals section.
         add_action( 'woocommerce_before_cart_totals', [ $this, 'display_credit_notice_cart' ] );
 
+        // ── Page-cache safety ─────────────────────────────────────────────────
+        // The cart page renders a logged-in user's real balance/applied-amount.
+        // Most cache plugins already skip the cart page (WC cookie detection),
+        // but this is a defense-in-depth guard against a misconfigured or
+        // cookie-unaware full-page/reverse-proxy cache serving one user's
+        // balance to another. Runs on template_redirect (before any output),
+        // so it's safe even if the active cache plugin honours these headers
+        // rather than its own cookie heuristic.
+        add_action( 'template_redirect', [ $this, 'maybe_prevent_page_cache' ] );
+
         // ── Asset enqueueing ──────────────────────────────────────────────────
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
 
@@ -237,6 +247,32 @@ class SAWE_MSC_Cart {
     // =========================================================================
     // Cart credit notice (remove / re-apply buttons)
     // =========================================================================
+
+    /**
+     * Send no-cache headers on the cart page for logged-in users, since the
+     * page renders that user's real credit balance and applied-discount
+     * amount. See the registration comment on template_redirect above.
+     *
+     * Sets both DONOTCACHEPAGE (the constant page-cache plugins — WP Fastest
+     * Cache, WP Rocket, W3 Total Cache, WP Super Cache — check before writing
+     * a static cache file) and nocache_headers() (the actual HTTP
+     * Cache-Control/Pragma headers, for any reverse-proxy/CDN layer in front
+     * of WordPress). Neither has any effect on a copy of this page that a
+     * cache plugin already generated before this guard existed — that stale
+     * copy will keep being served until it's cleared or naturally expires.
+     *
+     * Hook: template_redirect
+     *
+     * @return void
+     */
+    public function maybe_prevent_page_cache(): void {
+        if ( is_user_logged_in() && function_exists( 'is_cart' ) && is_cart() ) {
+            if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+                define( 'DONOTCACHEPAGE', true );
+            }
+            nocache_headers();
+        }
+    }
 
     /**
      * Render store-credit notice boxes above the cart totals section.
