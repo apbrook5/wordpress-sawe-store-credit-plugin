@@ -1,6 +1,6 @@
 # SAWE MembershipWorks Role Sync
 
-**Version:** 1.2.1
+**Version:** 1.2.2
 **Requires WordPress:** 6.4+
 **Requires PHP:** 8.0+
 **Depends on:** MembershipWorks (`memberfindme`) plugin being active for real membership checks. Degrades gracefully (logs an error, skips role changes) if it isn't.
@@ -16,7 +16,7 @@ Replaces the old **"Add WordPress Roles based on MembershipWorks"** code snippet
 | | Old snippet | This plugin |
 |---|---|---|
 | Throttle storage | `user_meta` (`sawe_check_date`) | Dedicated DB table, `{$wpdb->prefix}sawe_mwr_check_log` |
-| Throttle granularity | Once per day for everyone | Once per day for members, **every 5 minutes minimum for non-members** |
+| Throttle granularity | Once per day for everyone | Once per member interval (default 24h) for members, once per non-member interval (default 5min) for non-members — **both admin-configurable** |
 | Diagnostics | `error_log()` / `write_log()` only, on missing plugin only | Every check (success or failure) logged with the raw MembershipWorks response and a human-readable error message |
 | Admin visibility | None | "MembershipWorks Sync Log" screen under **SAWE Coupons and Credits**, searchable/sortable/filterable |
 | Error handling | Ambiguous/error responses caused roles to be silently removed | Ambiguous/error responses leave roles untouched and are flagged for review |
@@ -46,10 +46,10 @@ Administrators are always skipped, exactly as in the original snippet.
 
 Before calling the MembershipWorks API, the plugin looks up the user's existing row in `sawe_mwr_check_log`:
 
-- If the row's `is_member` flag is true (from the last successful check), the user is re-checked at most **once every 24 hours**.
-- Otherwise (never checked, or currently not a member, or last check ended in an error), the user is re-checked at most **once every 5 minutes**.
+- If the row's `is_member` flag is true (from the last successful check), the user is re-checked at most once per the **member check interval** (default **24 hours**).
+- Otherwise (never checked, or currently not a member, or last check ended in an error), the user is re-checked at most once per the **non-member check interval** (default **5 minutes**).
 
-No MembershipWorks API call is made when the relevant interval hasn't elapsed — the check is a single indexed `SELECT` against the log table.
+Both intervals are admin-configurable — value + minutes/hours — from **SAWE Coupons and Credits → MembershipWorks Sync Log → Settings**. No MembershipWorks API call is made when the relevant interval hasn't elapsed — the check is a single indexed `SELECT` against the log table.
 
 ### Interpreting the MembershipWorks response
 

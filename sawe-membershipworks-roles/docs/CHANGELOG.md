@@ -8,6 +8,13 @@ This plugin is released from the same repository and under the same git tag as [
 
 ---
 
+## [1.2.2] — 2026-08-05
+
+### Added
+- Member and non-member MembershipWorks check intervals are now admin-configurable (value + minutes/hours unit) from the "Settings" section of the "MembershipWorks Sync Log" screen, instead of requiring a code change to the `MEMBER_CHECK_INTERVAL`/`NONMEMBER_CHECK_INTERVAL` constants. Defaults remain 24 hours / 5 minutes.
+
+---
+
 ## [1.2.1] — 2026-08-05
 
 ### Added

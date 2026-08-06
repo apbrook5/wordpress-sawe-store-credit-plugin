@@ -45,20 +45,29 @@ class SAWE_MWR_Role_Sync {
 	private static ?self $instance = null;
 
 	/**
-	 * Minimum seconds between checks for a user currently known to be a
-	 * member (of either kind). 1 day, matching the original snippet's
-	 * once-per-day throttle.
+	 * Default value/unit for the member check interval, used to seed the
+	 * option defaults and as a fallback if the option is somehow missing.
+	 * 24 hours, matching the original snippet's once-per-day throttle.
 	 */
-	const MEMBER_CHECK_INTERVAL = DAY_IN_SECONDS;
+	const DEFAULT_MEMBER_INTERVAL_VALUE = 24;
+	const DEFAULT_MEMBER_INTERVAL_UNIT  = 'hours';
 
 	/**
-	 * Minimum seconds between checks for a user who is not currently known to
-	 * be a member (including users who have never been checked successfully,
-	 * or whose last check ended in an error). 5 minutes, per SAWE's request
-	 * to avoid hammering the MembershipWorks API for non-members while still
-	 * picking up new signups reasonably quickly.
+	 * Default value/unit for the non-member check interval. 5 minutes, per
+	 * SAWE's request to avoid hammering the MembershipWorks API for
+	 * non-members while still picking up new signups reasonably quickly.
 	 */
-	const NONMEMBER_CHECK_INTERVAL = 5 * MINUTE_IN_SECONDS;
+	const DEFAULT_NONMEMBER_INTERVAL_VALUE = 5;
+	const DEFAULT_NONMEMBER_INTERVAL_UNIT  = 'minutes';
+
+	/**
+	 * Option names (admin-configurable via the "Settings" section of the
+	 * MembershipWorks Sync Log screen — see SAWE_MWR_Admin::register_settings()).
+	 */
+	const OPTION_MEMBER_INTERVAL_VALUE    = 'sawe_mwr_member_interval_value';
+	const OPTION_MEMBER_INTERVAL_UNIT     = 'sawe_mwr_member_interval_unit';
+	const OPTION_NONMEMBER_INTERVAL_VALUE = 'sawe_mwr_nonmember_interval_value';
+	const OPTION_NONMEMBER_INTERVAL_UNIT  = 'sawe_mwr_nonmember_interval_unit';
 
 	/**
 	 * The exact MembershipWorks shortcodes used by the original snippet.
@@ -161,7 +170,7 @@ class SAWE_MWR_Role_Sync {
 
 		if ( $existing && ! empty( $existing->last_checked_at ) ) {
 			$elapsed  = current_time( 'timestamp' ) - strtotime( $existing->last_checked_at ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
-			$interval = ! empty( $existing->is_member ) ? self::MEMBER_CHECK_INTERVAL : self::NONMEMBER_CHECK_INTERVAL;
+			$interval = ! empty( $existing->is_member ) ? self::get_member_check_interval() : self::get_nonmember_check_interval();
 
 			if ( $elapsed < $interval ) {
 				// Throttled — do not call the MembershipWorks API this time.
@@ -170,6 +179,51 @@ class SAWE_MWR_Role_Sync {
 		}
 
 		$this->perform_check( $user, $existing );
+	}
+
+	/**
+	 * Current member check interval, in seconds, per the admin-configurable
+	 * 'sawe_mwr_member_interval_value' / 'sawe_mwr_member_interval_unit'
+	 * options (see SAWE_MWR_Admin::register_settings()).
+	 *
+	 * @return int
+	 */
+	public static function get_member_check_interval(): int {
+		return self::interval_to_seconds(
+			get_option( self::OPTION_MEMBER_INTERVAL_VALUE, self::DEFAULT_MEMBER_INTERVAL_VALUE ),
+			get_option( self::OPTION_MEMBER_INTERVAL_UNIT, self::DEFAULT_MEMBER_INTERVAL_UNIT )
+		);
+	}
+
+	/**
+	 * Current non-member check interval, in seconds, per the
+	 * admin-configurable 'sawe_mwr_nonmember_interval_value' /
+	 * 'sawe_mwr_nonmember_interval_unit' options.
+	 *
+	 * @return int
+	 */
+	public static function get_nonmember_check_interval(): int {
+		return self::interval_to_seconds(
+			get_option( self::OPTION_NONMEMBER_INTERVAL_VALUE, self::DEFAULT_NONMEMBER_INTERVAL_VALUE ),
+			get_option( self::OPTION_NONMEMBER_INTERVAL_UNIT, self::DEFAULT_NONMEMBER_INTERVAL_UNIT )
+		);
+	}
+
+	/**
+	 * Convert an admin-configured value/unit pair into seconds. Falls back to
+	 * a minimum of 1 minute if the stored value is missing or invalid, so a
+	 * misconfigured option can never disable throttling entirely.
+	 *
+	 * @param mixed  $value Raw option value (expected to be a positive integer).
+	 * @param mixed  $unit  Raw option unit ('minutes' or 'hours').
+	 *
+	 * @return int
+	 */
+	private static function interval_to_seconds( $value, $unit ): int {
+		$value = max( 1, absint( $value ) );
+		$unit  = ( 'hours' === $unit ) ? 'hours' : 'minutes';
+
+		return $value * ( 'hours' === $unit ? HOUR_IN_SECONDS : MINUTE_IN_SECONDS );
 	}
 
 	/**

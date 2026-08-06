@@ -10,8 +10,9 @@
  * diagnostics screen is never unreachable.
  *
  * The screen itself is rendered by SAWE_MWR_List_Table (a WP_List_Table
- * subclass) and includes a small "Settings" section for the one plugin-wide
- * option this plugin exposes: whether to drop the log table on uninstall.
+ * subclass) and includes a "Settings" section for this plugin's options:
+ * the member / non-member MembershipWorks check intervals, and whether to
+ * drop the log table on uninstall.
  *
  * @package SAWE_MWR
  * @since   1.0.0
@@ -153,11 +154,14 @@ class SAWE_MWR_Admin {
 	}
 
 	// =========================================================================
-	// Settings (uninstall option)
+	// Settings (check intervals + uninstall option)
 	// =========================================================================
 
 	/**
-	 * Register the single plugin-wide option via the WP Settings API.
+	 * Register this plugin's options via the WP Settings API: the uninstall
+	 * behaviour flag, plus the admin-configurable member / non-member check
+	 * intervals consumed by SAWE_MWR_Role_Sync::get_member_check_interval()
+	 * and ::get_nonmember_check_interval().
 	 *
 	 * @return void
 	 */
@@ -171,6 +175,94 @@ class SAWE_MWR_Admin {
 				'default'           => false,
 			)
 		);
+
+		register_setting(
+			'sawe_mwr_settings',
+			SAWE_MWR_Role_Sync::OPTION_MEMBER_INTERVAL_VALUE,
+			array(
+				'type'              => 'integer',
+				'sanitize_callback' => array( __CLASS__, 'sanitize_interval_value' ),
+				'default'           => SAWE_MWR_Role_Sync::DEFAULT_MEMBER_INTERVAL_VALUE,
+			)
+		);
+
+		register_setting(
+			'sawe_mwr_settings',
+			SAWE_MWR_Role_Sync::OPTION_MEMBER_INTERVAL_UNIT,
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( __CLASS__, 'sanitize_interval_unit' ),
+				'default'           => SAWE_MWR_Role_Sync::DEFAULT_MEMBER_INTERVAL_UNIT,
+			)
+		);
+
+		register_setting(
+			'sawe_mwr_settings',
+			SAWE_MWR_Role_Sync::OPTION_NONMEMBER_INTERVAL_VALUE,
+			array(
+				'type'              => 'integer',
+				'sanitize_callback' => array( __CLASS__, 'sanitize_interval_value' ),
+				'default'           => SAWE_MWR_Role_Sync::DEFAULT_NONMEMBER_INTERVAL_VALUE,
+			)
+		);
+
+		register_setting(
+			'sawe_mwr_settings',
+			SAWE_MWR_Role_Sync::OPTION_NONMEMBER_INTERVAL_UNIT,
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( __CLASS__, 'sanitize_interval_unit' ),
+				'default'           => SAWE_MWR_Role_Sync::DEFAULT_NONMEMBER_INTERVAL_UNIT,
+			)
+		);
+	}
+
+	/**
+	 * Sanitize an interval value field: a positive integer, minimum 1, so a
+	 * blank or zero submission can never disable throttling entirely.
+	 *
+	 * @param mixed $value Raw submitted value.
+	 *
+	 * @return int
+	 */
+	public static function sanitize_interval_value( $value ): int {
+		return max( 1, absint( $value ) );
+	}
+
+	/**
+	 * Sanitize an interval unit field to one of 'minutes' or 'hours',
+	 * defaulting to 'minutes' for any other submitted value.
+	 *
+	 * @param mixed $unit Raw submitted value.
+	 *
+	 * @return string
+	 */
+	public static function sanitize_interval_unit( $unit ): string {
+		return ( 'hours' === $unit ) ? 'hours' : 'minutes';
+	}
+
+	/**
+	 * Human-readable "N minutes"/"N hours" description of a stored interval
+	 * option pair, used in the introductory copy at the top of the log page.
+	 *
+	 * @param string $value_option   Option name holding the interval magnitude.
+	 * @param string $unit_option    Option name holding the interval unit.
+	 * @param int    $default_value  Fallback magnitude if the option is unset.
+	 * @param string $default_unit   Fallback unit if the option is unset.
+	 *
+	 * @return string
+	 */
+	private static function format_interval_description( string $value_option, string $unit_option, int $default_value, string $default_unit ): string {
+		$value = max( 1, absint( get_option( $value_option, $default_value ) ) );
+		$unit  = ( 'hours' === get_option( $unit_option, $default_unit ) ) ? 'hours' : 'minutes';
+
+		if ( 'hours' === $unit ) {
+			/* translators: %d: number of hours */
+			return sprintf( _n( '%d hour', '%d hours', $value, 'sawe-mwr' ), $value );
+		}
+
+		/* translators: %d: number of minutes */
+		return sprintf( _n( '%d minute', '%d minutes', $value, 'sawe-mwr' ), $value );
 	}
 
 	// =========================================================================
@@ -194,7 +286,14 @@ class SAWE_MWR_Admin {
 		<div class="wrap">
 			<h1><?php esc_html_e( 'MembershipWorks Sync Log', 'sawe-mwr' ); ?></h1>
 			<p class="description">
-				<?php esc_html_e( 'Every MembershipWorks membership check performed by SAWE MembershipWorks Role Sync is logged here — one row per user, updated on each re-check. Members are re-checked at most once every 24 hours; non-members (or users with an unresolved error) are re-checked at most once every 5 minutes.', 'sawe-mwr' ); ?>
+				<?php
+				printf(
+					/* translators: 1: member check interval description (e.g. "24 hours"), 2: non-member check interval description (e.g. "5 minutes") */
+					esc_html__( 'Every MembershipWorks membership check performed by SAWE MembershipWorks Role Sync is logged here — one row per user, updated on each re-check. Members are re-checked at most once every %1$s; non-members (or users with an unresolved error) are re-checked at most once every %2$s. Adjust these intervals in the Settings section below.', 'sawe-mwr' ),
+					esc_html( self::format_interval_description( SAWE_MWR_Role_Sync::OPTION_MEMBER_INTERVAL_VALUE, SAWE_MWR_Role_Sync::OPTION_MEMBER_INTERVAL_UNIT, SAWE_MWR_Role_Sync::DEFAULT_MEMBER_INTERVAL_VALUE, SAWE_MWR_Role_Sync::DEFAULT_MEMBER_INTERVAL_UNIT ) ),
+					esc_html( self::format_interval_description( SAWE_MWR_Role_Sync::OPTION_NONMEMBER_INTERVAL_VALUE, SAWE_MWR_Role_Sync::OPTION_NONMEMBER_INTERVAL_UNIT, SAWE_MWR_Role_Sync::DEFAULT_NONMEMBER_INTERVAL_VALUE, SAWE_MWR_Role_Sync::DEFAULT_NONMEMBER_INTERVAL_UNIT ) )
+				);
+				?>
 			</p>
 
 			<?php if ( isset( $_GET['sawe_mwr_deleted'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only notice flag, actual deletion was already nonce-verified in handle_list_table_actions(). ?>
@@ -234,9 +333,39 @@ class SAWE_MWR_Admin {
 			<form method="post" action="options.php">
 				<?php
 				settings_fields( 'sawe_mwr_settings' );
-				$remove_on_uninstall = get_option( 'sawe_mwr_remove_table_on_uninstall', false );
+				$remove_on_uninstall  = get_option( 'sawe_mwr_remove_table_on_uninstall', false );
+				$member_value         = get_option( SAWE_MWR_Role_Sync::OPTION_MEMBER_INTERVAL_VALUE, SAWE_MWR_Role_Sync::DEFAULT_MEMBER_INTERVAL_VALUE );
+				$member_unit          = get_option( SAWE_MWR_Role_Sync::OPTION_MEMBER_INTERVAL_UNIT, SAWE_MWR_Role_Sync::DEFAULT_MEMBER_INTERVAL_UNIT );
+				$nonmember_value      = get_option( SAWE_MWR_Role_Sync::OPTION_NONMEMBER_INTERVAL_VALUE, SAWE_MWR_Role_Sync::DEFAULT_NONMEMBER_INTERVAL_VALUE );
+				$nonmember_unit       = get_option( SAWE_MWR_Role_Sync::OPTION_NONMEMBER_INTERVAL_UNIT, SAWE_MWR_Role_Sync::DEFAULT_NONMEMBER_INTERVAL_UNIT );
 				?>
 				<table class="form-table">
+					<tr valign="top">
+						<th scope="row">
+							<label for="sawe_mwr_member_interval_value"><?php esc_html_e( 'Member check interval', 'sawe-mwr' ); ?></label>
+						</th>
+						<td>
+							<input type="number" min="1" step="1" id="sawe_mwr_member_interval_value" name="<?php echo esc_attr( SAWE_MWR_Role_Sync::OPTION_MEMBER_INTERVAL_VALUE ); ?>" value="<?php echo esc_attr( $member_value ); ?>" class="small-text">
+							<select name="<?php echo esc_attr( SAWE_MWR_Role_Sync::OPTION_MEMBER_INTERVAL_UNIT ); ?>">
+								<option value="minutes" <?php selected( 'minutes', $member_unit ); ?>><?php esc_html_e( 'Minutes', 'sawe-mwr' ); ?></option>
+								<option value="hours" <?php selected( 'hours', $member_unit ); ?>><?php esc_html_e( 'Hours', 'sawe-mwr' ); ?></option>
+							</select>
+							<p class="description"><?php esc_html_e( 'Minimum time between MembershipWorks API checks for a user currently known to be a member. Default: 24 hours.', 'sawe-mwr' ); ?></p>
+						</td>
+					</tr>
+					<tr valign="top">
+						<th scope="row">
+							<label for="sawe_mwr_nonmember_interval_value"><?php esc_html_e( 'Non-member check interval', 'sawe-mwr' ); ?></label>
+						</th>
+						<td>
+							<input type="number" min="1" step="1" id="sawe_mwr_nonmember_interval_value" name="<?php echo esc_attr( SAWE_MWR_Role_Sync::OPTION_NONMEMBER_INTERVAL_VALUE ); ?>" value="<?php echo esc_attr( $nonmember_value ); ?>" class="small-text">
+							<select name="<?php echo esc_attr( SAWE_MWR_Role_Sync::OPTION_NONMEMBER_INTERVAL_UNIT ); ?>">
+								<option value="minutes" <?php selected( 'minutes', $nonmember_unit ); ?>><?php esc_html_e( 'Minutes', 'sawe-mwr' ); ?></option>
+								<option value="hours" <?php selected( 'hours', $nonmember_unit ); ?>><?php esc_html_e( 'Hours', 'sawe-mwr' ); ?></option>
+							</select>
+							<p class="description"><?php esc_html_e( 'Minimum time between MembershipWorks API checks for a user who is not currently known to be a member (including users never checked, or whose last check errored). Default: 5 minutes.', 'sawe-mwr' ); ?></p>
+						</td>
+					</tr>
 					<tr valign="top">
 						<th scope="row"><?php esc_html_e( 'Remove database table on uninstall', 'sawe-mwr' ); ?></th>
 						<td>

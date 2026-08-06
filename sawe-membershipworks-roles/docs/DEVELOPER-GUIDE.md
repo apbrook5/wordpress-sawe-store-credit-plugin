@@ -93,14 +93,14 @@ Singleton bootstrap. `includes()` requires all class files; `init_components()` 
 Static-only. See [§3](#3-database-schema) for the table it owns. `query_rows( array $args )` is the single method the admin list table calls; it whitelists `orderby` against a fixed map to prevent SQL injection.
 
 ### `SAWE_MWR_Role_Sync`
-- `MEMBER_CHECK_INTERVAL` = `DAY_IN_SECONDS`, `NONMEMBER_CHECK_INTERVAL` = `5 * MINUTE_IN_SECONDS`.
+- `get_member_check_interval()` / `get_nonmember_check_interval()` — return the current throttle interval in seconds, computed from the admin-configurable `sawe_mwr_member_interval_value`/`_unit` and `sawe_mwr_nonmember_interval_value`/`_unit` options (see [§7](#7-wordpress-option-keys)). Defaults: 24 hours / 5 minutes (`DEFAULT_MEMBER_INTERVAL_VALUE`/`_UNIT`, `DEFAULT_NONMEMBER_INTERVAL_VALUE`/`_UNIT`).
 - `maybe_sync_current_user()` — the throttle gate. Reads the user's existing log row, picks the interval based on `is_member`, and only calls `perform_check()` if enough time has elapsed.
 - `perform_check( WP_User $user, ?object $existing )` — guards for `sf_shortcode()` missing and for thrown exceptions, then calls it twice (general + corporate) and hands both raw strings to `interpret_result()`.
 - `interpret_result( string $raw )` — returns `[ is_yes, is_error, raw_text ]`. `stripos( $raw, 'yes' )` → member; empty or case-insensitive `'no'` → non-member; anything else → error.
 - `log_result(...)` — the only place that calls `SAWE_MWR_DB::upsert_log()`.
 
 ### `SAWE_MWR_Admin`
-`register_menu()` is the integration point with the Store Credits plugin — see [§12](#12-relationship-to-sawe-membership-store-credits). `register_settings()` registers the single `sawe_mwr_remove_table_on_uninstall` option via the Settings API.
+`register_menu()` is the integration point with the Store Credits plugin — see [§12](#12-relationship-to-sawe-membership-store-credits). `register_settings()` registers `sawe_mwr_remove_table_on_uninstall` plus the four check-interval options (value + unit for member and non-member) via the Settings API, with `sanitize_interval_value()`/`sanitize_interval_unit()` as sanitize callbacks. The "Settings" section of the MembershipWorks Sync Log screen renders number + minutes/hours dropdown fields for both intervals.
 
 ### `SAWE_MWR_List_Table extends WP_List_Table`
 Standard WP admin list table. `prepare_items()` reads `$_GET`/`$_REQUEST` (`s`, `status`, `error_filter`, `orderby`, `order`, page number) and calls `SAWE_MWR_DB::query_rows()`. `get_views()` renders the All/OK/Errors links. `extra_tablenav( 'top' )` renders the error-message dropdown.
@@ -134,7 +134,7 @@ This plugin does not currently expose its own custom actions/filters for third-p
 
 | Constant | Value | Purpose |
 |---|---|---|
-| `SAWE_MWR_VERSION` | `'1.2.1'` | Bump in sync with the `Version:` header on every release. |
+| `SAWE_MWR_VERSION` | `'1.2.2'` | Bump in sync with the `Version:` header on every release. |
 | `SAWE_MWR_PLUGIN_FILE` | `__FILE__` of main file | Passed to `register_activation_hook()`. |
 | `SAWE_MWR_PLUGIN_DIR` | `plugin_dir_path( __FILE__ )` | Used for `require_once` includes. |
 | `SAWE_MWR_PLUGIN_URL` | `plugin_dir_url( __FILE__ )` | Reserved for future enqueued assets (none as of 1.2.0). |
@@ -148,6 +148,10 @@ This plugin does not currently expose its own custom actions/filters for third-p
 | Option | Type | Default | Purpose |
 |---|---|---|---|
 | `sawe_mwr_remove_table_on_uninstall` | boolean | `false` | When true, `uninstall.php` drops `sawe_mwr_check_log` on plugin deletion. |
+| `sawe_mwr_member_interval_value` | integer (≥1) | `24` | Member check interval magnitude. Paired with `sawe_mwr_member_interval_unit`. |
+| `sawe_mwr_member_interval_unit` | string (`minutes`\|`hours`) | `hours` | Unit for `sawe_mwr_member_interval_value`. |
+| `sawe_mwr_nonmember_interval_value` | integer (≥1) | `5` | Non-member check interval magnitude. Paired with `sawe_mwr_nonmember_interval_unit`. |
+| `sawe_mwr_nonmember_interval_unit` | string (`minutes`\|`hours`) | `minutes` | Unit for `sawe_mwr_nonmember_interval_value`. |
 
 ---
 
@@ -155,7 +159,7 @@ This plugin does not currently expose its own custom actions/filters for third-p
 
 1. A hook fires (login, profile update, a WooCommerce page, or any front-end page load) for a logged-in, non-administrator user.
 2. `maybe_sync_current_user()` loads the user's row from `sawe_mwr_check_log`, if any.
-3. If a row exists: `elapsed = now - last_checked_at`; `interval = is_member ? 24h : 5min`. If `elapsed < interval`, **return — no API call.**
+3. If a row exists: `elapsed = now - last_checked_at`; `interval = is_member ? get_member_check_interval() : get_nonmember_check_interval()` (admin-configurable, default 24h / 5min — see [§7](#7-wordpress-option-keys)). If `elapsed < interval`, **return — no API call.**
 4. Otherwise, `perform_check()` runs:
    - If `sf_shortcode()` doesn't exist → log `status = 'error'`, roles untouched, return.
    - Call `sf_shortcode()` for the general and corporate shortcodes; catch `\Throwable` → log error, roles untouched, return.
@@ -184,7 +188,7 @@ This is safe — it only clears the diagnostic/throttle table, not WordPress rol
 Visit **SAWE Coupons and Credits → MembershipWorks Sync Log** and click the **Errors** view, or filter by the specific error message.
 
 **Change the throttle intervals:**
-Edit the `MEMBER_CHECK_INTERVAL` / `NONMEMBER_CHECK_INTERVAL` constants in `includes/class-sawe-mwr-role-sync.php`.
+Visit **SAWE Coupons and Credits → MembershipWorks Sync Log → Settings** and set the "Member check interval" / "Non-member check interval" fields (value + minutes/hours). No code change or deploy required — `maybe_sync_current_user()` reads these options on every call via `get_member_check_interval()`/`get_nonmember_check_interval()`.
 
 ---
 
