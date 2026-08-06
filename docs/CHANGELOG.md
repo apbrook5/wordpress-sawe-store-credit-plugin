@@ -6,6 +6,13 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.3] — 2026-08-05
+
+### Changed
+- Version bump only — synced with [SAWE MembershipWorks Role Sync](../sawe-membershipworks-roles/docs/CHANGELOG.md) v1.2.3, tagged together as `v1.2.3`. No functional changes to SAWE Membership Store Credits itself in this release.
+
+---
+
 ## [1.2.2] — 2026-08-05
 
 ### Added

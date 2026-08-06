@@ -8,6 +8,13 @@ This plugin is released from the same repository and under the same git tag as [
 
 ---
 
+## [1.2.3] — 2026-08-05
+
+### Changed
+- Version bump only — synced with [SAWE Membership Store Credits](../../docs/CHANGELOG.md) v1.2.3, tagged together as `v1.2.3`. No functional changes to this plugin itself in this release.
+
+---
+
 ## [1.2.2] — 2026-08-05
 
 ### Added

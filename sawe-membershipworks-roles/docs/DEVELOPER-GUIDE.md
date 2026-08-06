@@ -134,7 +134,7 @@ This plugin does not currently expose its own custom actions/filters for third-p
 
 | Constant | Value | Purpose |
 |---|---|---|
-| `SAWE_MWR_VERSION` | `'1.2.2'` | Bump in sync with the `Version:` header on every release. |
+| `SAWE_MWR_VERSION` | `'1.2.3'` | Bump in sync with the `Version:` header on every release. |
 | `SAWE_MWR_PLUGIN_FILE` | `__FILE__` of main file | Passed to `register_activation_hook()`. |
 | `SAWE_MWR_PLUGIN_DIR` | `plugin_dir_path( __FILE__ )` | Used for `require_once` includes. |
 | `SAWE_MWR_PLUGIN_URL` | `plugin_dir_url( __FILE__ )` | Reserved for future enqueued assets (none as of 1.2.0). |
