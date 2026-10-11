@@ -616,18 +616,36 @@ class SAWE_MSC_Coupons {
             wp_send_json_error( [ 'message' => __( 'Invalid coupon code.', 'sawe-msc' ) ] );
         }
 
+        $this->apply_coupon_for_session( $code );
+
+        wp_send_json_success( [ 'message' => __( 'Coupon applied.', 'sawe-msc' ) ] );
+    }
+
+    /**
+     * Apply a coupon to the cart and take it off SESSION_COUPON_REMOVED so
+     * auto-apply can work again.
+     *
+     * Shared by ajax_apply_coupon() and the block cart/checkout
+     * (SAWE_MSC_Blocks::handle_cart_update()).
+     *
+     * @param string $code  The WC coupon code to apply.
+     *
+     * @return bool  False if WooCommerce rejected the coupon (WC adds an error notice).
+     */
+    public function apply_coupon_for_session( string $code ): bool {
         // Remove from "removed" session so auto-apply can re-add it later if needed.
         $removed = $this->get_removed_codes();
         $removed = array_values( array_diff( $removed, [ $code ] ) );
         WC()->session->set( self::SESSION_COUPON_REMOVED, $removed );
 
+        $applied = true;
         if ( ! WC()->cart->has_discount( $code ) ) {
-            WC()->cart->apply_coupon( $code );
+            $applied = WC()->cart->apply_coupon( $code );
         }
 
         WC()->cart->calculate_totals();
 
-        wp_send_json_success( [ 'message' => __( 'Coupon applied.', 'sawe-msc' ) ] );
+        return $applied;
     }
 
     /**
@@ -651,6 +669,23 @@ class SAWE_MSC_Coupons {
             wp_send_json_error( [ 'message' => __( 'Invalid coupon code.', 'sawe-msc' ) ] );
         }
 
+        $this->remove_coupon_for_session( $code );
+
+        wp_send_json_success( [ 'message' => __( 'Coupon removed from this order.', 'sawe-msc' ) ] );
+    }
+
+    /**
+     * Remove a coupon from the cart and add it to SESSION_COUPON_REMOVED so
+     * auto-apply skips it this session.
+     *
+     * Shared by ajax_remove_coupon() and the block cart/checkout
+     * (SAWE_MSC_Blocks::handle_cart_update()).
+     *
+     * @param string $code  The WC coupon code to remove.
+     *
+     * @return void
+     */
+    public function remove_coupon_for_session( string $code ): void {
         // Record that the user removed this coupon so auto-apply doesn't re-add it.
         $removed = $this->get_removed_codes();
         if ( ! in_array( $code, $removed, true ) ) {
@@ -660,8 +695,6 @@ class SAWE_MSC_Coupons {
 
         WC()->cart->remove_coupon( $code );
         WC()->cart->calculate_totals();
-
-        wp_send_json_success( [ 'message' => __( 'Coupon removed from this order.', 'sawe-msc' ) ] );
     }
 
     // =========================================================================

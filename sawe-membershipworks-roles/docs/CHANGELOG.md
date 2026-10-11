@@ -8,6 +8,17 @@ This plugin is released from the same repository and under the same git tag as [
 
 ---
 
+## [1.2.4] — 2026-10-11
+
+### Changed
+- Text domain now loads on `init` rather than `plugins_loaded` (WordPress 6.7+).
+- Synced with [SAWE Membership Store Credits](../../docs/CHANGELOG.md) v1.2.4, tagged together as `v1.2.4`.
+
+### Fixed
+- Uninstall now also removes the member / non-member check interval options.
+
+---
+
 ## [1.2.3] — 2026-08-05
 
 ### Changed

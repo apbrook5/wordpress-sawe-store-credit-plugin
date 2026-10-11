@@ -1,8 +1,8 @@
 # SAWE Membership Store Credits — Developer Guide
 
 > **Audience:** Developers who need to install, configure, extend, debug, or upgrade this plugin.
-> **Plugin version documented:** 1.2.3
-> **Last updated:** 2026-08-05
+> **Plugin version documented:** 1.2.4
+> **Last updated:** 2026-10-11
 
 ---
 
@@ -53,8 +53,8 @@ SAWE_Membership_Store_Credits  (bootstrap, DI, activation hooks)
 
 - **Static DB layer** — `SAWE_MSC_DB` is a pure static helper class with no constructor. Any other class can call it without needing an instance.
 - **Singleton components** — every other class uses `::instance()` so hooks are never registered twice, even if called from multiple places.
-- **Nothing written to DB until checkout** — the store credit discount amount lives exclusively in the WC session (`sawe_msc_applied`) until `woocommerce_checkout_order_created` fires. Abandoned carts never burn a user's balance.
-- **CPT as config store** — each store credit definition is a WordPress post (`sawe_store_credit`). This gives admins full draft/publish/trash workflow, revision history, and REST API access for free.
+- **Nothing written to DB until checkout** — the store credit discount amount lives exclusively in the WC session (`sawe_msc_applied`) until `woocommerce_checkout_order_created` (classic checkout) or `woocommerce_store_api_checkout_order_processed` (block checkout) fires. Abandoned carts never burn a user's balance.
+- **CPT as config store** — each store credit definition is a WordPress post (`sawe_store_credit`). This gives admins full draft/publish/trash workflow, and revision history for free. The CPT is deliberately not exposed via the REST API, and all of its capabilities map to `manage_woocommerce`.
 - **WC native coupons extended** — coupons use WooCommerce's own `shop_coupon` post type. SAWE layers extra post meta and behaviour on top without replacing WC's coupon engine.
 
 ---
@@ -74,7 +74,8 @@ sawe-membership-store-credits/
 │   ├── class-sawe-msc-cart.php          ← Fee injection, AJAX handlers, session management (credits)
 │   ├── class-sawe-msc-checkout.php      ← Checkout display, DB finalisation, cancel restore (credits)
 │   ├── class-sawe-msc-account.php       ← My Account store-credits tab/endpoint + dashboard widget
-│   └── class-sawe-msc-coupons.php       ← Coupon role restriction, auto-apply, display, available-coupons tab
+│   ├── class-sawe-msc-coupons.php       ← Coupon role restriction, auto-apply, display, available-coupons tab
+│   └── class-sawe-msc-blocks.php        ← Cart/Checkout blocks: notice boxes, Store API buttons, sync + auto-apply
 │
 ├── admin/
 │   ├── class-sawe-msc-admin.php         ← Menus, WP Settings API, credit meta boxes, list columns
@@ -85,7 +86,8 @@ sawe-membership-store-credits/
 ├── public/
 │   ├── css/sawe-msc-public.css          ← Credit + coupon box styles (overridable)
 │   ├── js/sawe-msc-cart.js              ← Credit remove/restore AJAX handlers
-│   └── js/sawe-msc-coupons.js           ← Coupon apply/remove AJAX handlers
+│   ├── js/sawe-msc-coupons.js           ← Coupon apply/remove AJAX handlers
+│   └── js/sawe-msc-blocks.js            ← Block cart/checkout: buttons + live notice refresh
 │
 └── docs/
     ├── DEVELOPER-GUIDE.md               ← This file
@@ -186,7 +188,7 @@ Bootstrap singleton. Loads all files, registers activation/deactivation hooks, a
 | `::instance()` | Returns/creates the singleton |
 | `includes()` | Requires all class files (including new coupon classes) |
 | `init_hooks()` | Registers `plugins_loaded` callbacks |
-| `load_textdomain()` | Loads `.mo` translation files |
+| `load_textdomain()` | Loads `.mo` translation files (on `init`, per WP 6.7+) |
 | `check_woocommerce()` | Shows admin error if WC is missing |
 | `init_components()` | Instantiates all component singletons |
 
@@ -219,7 +221,7 @@ Registers the `sawe_store_credit` CPT and post meta.
 | Method | Signature | Purpose |
 |--------|-----------|---------|
 | `register_post_type()` | `(): void` | Registers CPT (title/editor supports removed — managed via meta box) |
-| `register_meta()` | `(): void` | Registers all 7 post meta keys with REST + auth |
+| `register_meta()` | `(): void` | Registers all 7 post meta keys (not in REST; writes need `manage_woocommerce`) |
 | `get_published_credits()` | `(): WP_Post[]` | All `publish` credit posts |
 | `get_credit_meta()` | `(int): array` | Returns typed, decoded meta array |
 | `get_next_renewal_date()` | `(int): DateTime` | Next renewal DateTime (UTC) |
@@ -249,6 +251,8 @@ Injects credit discounts as WC fees and manages remove/restore.
 |----------|-------|---------|
 | `SESSION_APPLIED` | `'sawe_msc_applied'` | `[post_id => amount]` reserved this page load |
 | `SESSION_REMOVED` | `'sawe_msc_removed'` | `[post_id, ...]` user removed credits |
+
+`set_credit_removed( $post_id, $removed )` updates `SESSION_REMOVED` and recalculates totals; used by both the classic AJAX handlers and `SAWE_MSC_Blocks`.
 
 ---
 
@@ -294,9 +298,31 @@ Registers the `/my-account/store-credits/` endpoint; adds "Available Store Credi
 | `endpoint_content()` | Renders the "Available Coupons" My Account tab |
 | `ajax_apply_coupon()` | AJAX `sawe_msc_apply_coupon` — applies coupon + removes from session list |
 | `ajax_remove_coupon()` | AJAX `sawe_msc_remove_coupon` — removes coupon + adds to session list |
+| `apply_coupon_for_session()` / `remove_coupon_for_session()` | Shared by the AJAX handlers above and `SAWE_MSC_Blocks` |
 | `get_coupon_roles()` | Public — returns role slugs for a coupon (used by admin class too) |
 | `clear_session()` | Clears `SESSION_COUPON_REMOVED` on logout / thank-you page |
 | `enqueue_scripts()` | Enqueues `sawe-msc-public.css` + `sawe-msc-coupons.js` on cart/checkout/account |
+
+---
+
+### `SAWE_MSC_Blocks` *(new in 1.2.4)*
+*File:* `includes/class-sawe-msc-blocks.php`
+
+Support for the WooCommerce Cart and Checkout **blocks**. Every hook is either block-specific or gated by `is_block_page()`, so the classic shortcode pages are unaffected.
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `STORE_API_NAMESPACE` | `'sawe-msc'` | Store API extension data key + update callback namespace |
+
+| Method | Purpose |
+|--------|---------|
+| `is_block_page()` | Static — true on the Cart/Checkout page when it contains the `woocommerce/cart` / `woocommerce/checkout` block (false on checkout endpoints) |
+| `prepare_block_page()` | `template_redirect` — runs credit sync + coupon auto-apply on block pages (the classic hooks never fire there) |
+| `get_notices_html()` | Static — renders the credit + coupon boxes using the classic display methods (output-buffered) |
+| `prepend_notices()` | `render_block_woocommerce/{cart,checkout}` — prepends `.sawe-msc-blocks-notices` above the block |
+| `register_store_api()` | Adds `extensions['sawe-msc'].notices_html` to Store API cart responses; registers the update callback |
+| `handle_cart_update()` | Store API callback for `remove_credit`, `restore_credit`, `apply_coupon`, `remove_coupon` |
+| `enqueue_scripts()` | Block pages only: dequeues `sawe-msc-cart.js` / `sawe-msc-coupons.js`, enqueues `sawe-msc-blocks.js` |
 
 ---
 
@@ -341,6 +367,7 @@ Registers the `/my-account/store-credits/` endpoint; adds "Available Store Credi
 |------|---------------|----------|-------|
 | `before_woocommerce_init` | main file | — | Declares HPOS compatibility |
 | `plugins_loaded` | bootstrap | 5 | Instantiates main class |
+| `init` | bootstrap | default | Loads text domain |
 | `init` | `SAWE_MSC_Credit_Post_Type` | default | Registers CPT + meta |
 | `init` | `SAWE_MSC_Account` | default | Registers `store-credits` endpoint |
 | `init` | `SAWE_MSC_Coupons` | default | Registers `available-coupons` endpoint |
@@ -355,7 +382,11 @@ Registers the `/my-account/store-credits/` endpoint; adds "Available Store Credi
 | `wp_ajax_sawe_msc_restore_credit` | `SAWE_MSC_Cart` | default | AJAX: restore credit |
 | `wp_ajax_sawe_msc_apply_coupon` | `SAWE_MSC_Coupons` | default | AJAX: apply coupon |
 | `wp_ajax_sawe_msc_remove_coupon` | `SAWE_MSC_Coupons` | default | AJAX: remove coupon |
-| `woocommerce_checkout_order_created` | `SAWE_MSC_Checkout` | 10 | Finalises DB deductions |
+| `woocommerce_checkout_order_created` | `SAWE_MSC_Checkout` | 10 | Finalises DB deductions (classic checkout) |
+| `woocommerce_store_api_checkout_order_processed` | `SAWE_MSC_Checkout` | 10 | Finalises DB deductions (block checkout) |
+| `template_redirect` | `SAWE_MSC_Blocks` | default | Block pages only: credit sync + coupon auto-apply |
+| `wp_enqueue_scripts` | `SAWE_MSC_Blocks` | 20 | Block pages only: swaps classic JS for `sawe-msc-blocks.js` |
+| `woocommerce_blocks_loaded` | `SAWE_MSC_Blocks` | default | Registers Store API extension data + update callback |
 | `woocommerce_order_status_cancelled` | `SAWE_MSC_Checkout` | default | Restores credit balance |
 | `woocommerce_order_status_refunded` | `SAWE_MSC_Checkout` | default | Restores credit balance |
 | `woocommerce_thankyou` | `SAWE_MSC_Cart` | default | Clears credit session |
@@ -385,6 +416,8 @@ Registers the `/my-account/store-credits/` endpoint; adds "Available Store Credi
 | `woocommerce_account_menu_items` | `SAWE_MSC_Account` | Inserts "Available Store Credits" menu item |
 | `woocommerce_account_menu_items` | `SAWE_MSC_Coupons` | Inserts "Available Coupons" menu item |
 | `manage_sawe_store_credit_posts_columns` | `SAWE_MSC_Admin` | Adds custom list columns |
+| `render_block_woocommerce/cart` | `SAWE_MSC_Blocks` | Prepends credit + coupon boxes above the Cart block |
+| `render_block_woocommerce/checkout` | `SAWE_MSC_Blocks` | Prepends credit + coupon boxes above the Checkout block |
 
 ---
 
@@ -511,6 +544,29 @@ AJAX actions: `sawe_msc_apply_coupon`, `sawe_msc_remove_coupon`.
 - `update_checkout` on `document.body`
 - `wc_update_cart` on `document.body`
 
+Neither file is loaded on block cart/checkout pages (see below).
+
+### `public/js/sawe-msc-blocks.js` *(new in 1.2.4)*
+
+Block cart/checkout pages only. No jQuery, no build step.
+Depends on: `wp-data`, plus `wc-blocks-data-store` and `wc-blocks-checkout` when registered.
+Localised object: `saweMscBlocksData`
+
+```js
+saweMscBlocksData = {
+  namespace: string,  // 'sawe-msc'
+  context:   string,  // 'wc/cart' | 'wc/checkout' (block notice context)
+  i18n: {
+    working: string,  // "Updating…"
+    error:   string,  // generic error message
+  }
+}
+```
+
+- Buttons call `wc.blocksCheckout.extensionCartUpdate( { namespace: 'sawe-msc', data: { action, credit_id, coupon_code } } )`; the block refreshes its totals from the response.
+- Subscribes to the `wc/store/cart` data store and replaces `.sawe-msc-blocks-notices` with `extensions['sawe-msc'].notices_html` whenever it changes.
+- Errors (e.g. a coupon WooCommerce rejects) are shown with `core/notices` in the block's notice area.
+
 ### `admin/js/sawe-msc-admin.js`
 
 Manages tag-chip list managers. Reads `data-target` from `.sawe-msc-add-tag-btn`:
@@ -558,12 +614,18 @@ SAWE_MSC_Checkout::display_credit_notice() (priority 5)
   • Renders .sawe-msc-credit-box for each active credit
   • Shows balance, amount applied, renewal date
   • Shows Remove / Re-apply button
+  (Block cart/checkout: SAWE_MSC_Blocks renders the same boxes above the
+   block and refreshes them from the Store API cart response; buttons go
+   through extensionCartUpdate → handle_cart_update())
          │
          ▼
 User places order
-woocommerce_checkout_order_created
+woocommerce_checkout_order_created (classic) /
+woocommerce_store_api_checkout_order_processed (blocks)
 SAWE_MSC_Checkout::finalise_deductions()
   • Reads SESSION_APPLIED
+  • Reverses any deductions from an earlier pass for the same order
+    (payment retry on a pending/failed order)
   • Calls SAWE_MSC_DB::deduct_credit() for each entry
   • Stores deductions in order meta _sawe_msc_credit_deductions
   • Clears session keys
@@ -583,6 +645,7 @@ Admin creates WC coupon (shop_coupon) and sets SAWE options:
          ▼
 User visits cart or checkout
 woocommerce_before_cart / woocommerce_before_checkout_form (priority 1)
+  (block pages: template_redirect → SAWE_MSC_Blocks::prepare_block_page())
 SAWE_MSC_Coupons::maybe_auto_apply_coupons()
   • For each auto-apply coupon:
       – Skip if code is in SESSION_COUPON_REMOVED
@@ -773,9 +836,27 @@ register_post_meta( 'shop_coupon', '_sawe_msc_coupon_roles', [
 | "Available Coupons" tab 404 | Rewrite rules stale | Settings → Permalinks → Save |
 | Coupon boxes appear but buttons don't work | `sawe-msc-coupons.js` not enqueued | Check `is_cart()` / `is_checkout()` return true on that page |
 
+### Cart / Checkout blocks *(new in 1.2.4)*
+
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| No credit/coupon boxes above the block | Page isn't the assigned Cart/Checkout page, or the block is in a template rather than the page content | `SAWE_MSC_Blocks::is_block_page()` checks the page set in WooCommerce → Settings → Advanced for the `woocommerce/cart` / `woocommerce/checkout` block |
+| Boxes show but don't update after cart changes | `extensions['sawe-msc']` missing from `/wp-json/wc/store/v1/cart` | Check the response in browser dev tools; `register_store_api()` needs `woocommerce_store_api_register_endpoint_data()` |
+| Buttons do nothing | `sawe-msc-blocks.js` not loaded, or `wc.blocksCheckout` unavailable | Check the script is enqueued and `window.wc.blocksCheckout.extensionCartUpdate` exists in the console |
+| Buttons fire twice / page reloads oddly | Classic `sawe-msc-cart.js` / `sawe-msc-coupons.js` still loaded | `SAWE_MSC_Blocks::enqueue_scripts()` dequeues them at priority 20 — check another plugin isn't re-enqueueing |
+| Balance not deducted for block order | `woocommerce_store_api_checkout_order_processed` not firing | Confirm WooCommerce ≥ 8.0 and the order went through the Checkout block |
+
 ---
 
 ## 18. Upgrade Notes
+
+### 1.2.x → 1.2.4
+
+- **No DB changes, no rewrite flush needed.**
+- **Credit definitions now need `manage_woocommerce`** — admins and shop managers are unaffected; Editors/Authors who could previously edit credits can no longer.
+- **REST API** — `/wp-json/wp/v2/sawe_store_credit` no longer exists. Nothing in this plugin used it.
+- **Cart / Checkout blocks** — supported but optional. Sites on the classic shortcodes see no change. If you switch to blocks, re-test credit remove/re-apply, coupon apply/remove, auto-apply, and order deduction.
+- **Payment retries** — an order whose payment is retried now has its earlier deduction reversed before re-deducting, so `_sawe_msc_credit_deductions` always holds the order's current amounts.
 
 ### 1.1.x → 1.1.4
 

@@ -1,6 +1,6 @@
 # SAWE MembershipWorks Role Sync
 
-**Version:** 1.2.3
+**Version:** 1.2.4
 **Requires WordPress:** 6.4+
 **Requires PHP:** 8.0+
 **Depends on:** MembershipWorks (`memberfindme`) plugin being active for real membership checks. Degrades gracefully (logs an error, skips role changes) if it isn't.

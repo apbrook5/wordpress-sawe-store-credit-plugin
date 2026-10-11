@@ -1178,6 +1178,8 @@ class SAWE_MSC_Admin {
         // BOM so Excel opens the file as UTF-8 without a manual import step.
         fputs( $out, "\xEF\xBB\xBF" );
 
+        // Explicit separator/enclosure/escape: PHP 8.4 deprecates relying on
+        // fputcsv()'s default $escape, and '' gives standard RFC 4180 output.
         fputcsv( $out, [
             'Credit Name',
             'Username',
@@ -1188,25 +1190,44 @@ class SAWE_MSC_Admin {
             'Last Updated',
             'Last Renewal',
             'Next Renewal',
-        ] );
+        ], ',', '"', '' );
 
         foreach ( $rows as $row ) {
             $cpid    = (int) $row->credit_post_id;
             $next_dt = SAWE_MSC_Credit_Post_Type::get_next_renewal_date( $cpid );
 
             fputcsv( $out, [
-                $credit_titles[ $cpid ] ?? '',
-                $row->user_login,
-                $row->display_name,
+                self::csv_safe( $credit_titles[ $cpid ] ?? '' ),
+                self::csv_safe( $row->user_login ),
+                self::csv_safe( $row->display_name ),
                 number_format( (float) $row->balance,        2, '.', '' ),
                 number_format( (float) $row->initial_amount, 2, '.', '' ),
                 $row->awarded_at   ? gmdate( $date_format, strtotime( $row->awarded_at ) )   : '',
                 $row->last_updated ? gmdate( $date_format, strtotime( $row->last_updated ) ) : '',
                 $row->renewed_at   ? gmdate( $date_format, strtotime( $row->renewed_at ) )   : '',
                 $next_dt ? $next_dt->format( $date_format ) : '',
-            ] );
+            ], ',', '"', '' );
         }
 
         fclose( $out );
+    }
+
+    /**
+     * Neutralise spreadsheet formula injection in a CSV cell.
+     *
+     * Members can set their own display name from My Account, so a value like
+     * =HYPERLINK(...) would otherwise run as a formula when an admin opens the
+     * export in Excel or Sheets. Prefixing a single quote makes it plain text.
+     *
+     * @param mixed $value  Raw cell value.
+     *
+     * @return string
+     */
+    private static function csv_safe( $value ): string {
+        $value = (string) $value;
+        if ( '' !== $value && in_array( $value[0], [ '=', '+', '-', '@', "\t", "\r" ], true ) ) {
+            return "'" . $value;
+        }
+        return $value;
     }
 }

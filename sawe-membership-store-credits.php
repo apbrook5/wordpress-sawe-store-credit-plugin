@@ -3,7 +3,7 @@
  * Plugin Name: SAWE Membership Store Credits
  * Plugin URI:  https://github.com/apbrook5/wordpress-sawe-store-credit-plugin
  * Description: Provides renewable store credits and role-based coupons to members based on WordPress roles, integrated with WooCommerce. Credits and coupons auto-apply at checkout, renew annually, and are fully configurable per role and qualifying product.
- * Version:     1.2.3
+ * Version:     1.2.4
  * Author:      Society of Allied Weight Engineers, Inc.
  * Author URI:  https://www.sawe.org
  * License:     GPL-2.0+
@@ -13,8 +13,9 @@
  *
  * Requires at least: 6.4
  * Requires PHP:      8.0
+ * Requires Plugins:  woocommerce
  * WC requires at least: 8.0
- * WC tested up to:   9.x
+ * WC tested up to:   11.2
  *
  * @package SAWE_MSC
  *
@@ -59,7 +60,7 @@ defined( 'ABSPATH' ) || exit; // Block direct HTTP access to this file.
 // ============================================================================
 
 /** Plugin semantic version. Bump in sync with the Version: header above. */
-define( 'SAWE_MSC_VERSION',     '1.2.3' );
+define( 'SAWE_MSC_VERSION',     '1.2.4' );
 
 /** Absolute path to sawe-membership-store-credits.php (this file). */
 define( 'SAWE_MSC_PLUGIN_FILE', __FILE__ );
@@ -196,6 +197,9 @@ final class SAWE_Membership_Store_Credits {
         // Coupon frontend logic (role restriction, auto-apply, display, My Account tab).
         require_once SAWE_MSC_PLUGIN_DIR . 'includes/class-sawe-msc-coupons.php';
 
+        // Cart / Checkout blocks support (notice boxes, buttons, auto-apply).
+        require_once SAWE_MSC_PLUGIN_DIR . 'includes/class-sawe-msc-blocks.php';
+
         // Coupon admin meta box on shop_coupon edit screens.
         require_once SAWE_MSC_PLUGIN_DIR . 'admin/class-sawe-msc-coupon-admin.php';
     }
@@ -213,8 +217,9 @@ final class SAWE_Membership_Store_Credits {
      * @return void
      */
     private function init_hooks(): void {
-        // Load .mo translation files from /languages/.
-        add_action( 'plugins_loaded', [ $this, 'load_textdomain' ] );
+        // Load .mo translation files from /languages/. On init, not
+        // plugins_loaded: WP 6.7+ warns when translations load before init.
+        add_action( 'init', [ $this, 'load_textdomain' ] );
 
         // Show admin notice if WooCommerce is missing.
         add_action( 'plugins_loaded', [ $this, 'check_woocommerce' ] );
@@ -233,7 +238,7 @@ final class SAWE_Membership_Store_Credits {
      * .po/.mo files must be named sawe-msc-{locale}.mo and placed in
      * wp-content/plugins/sawe-membership-store-credits/languages/.
      *
-     * Hook: plugins_loaded
+     * Hook: init
      *
      * @return void
      */
@@ -301,6 +306,10 @@ final class SAWE_Membership_Store_Credits {
         // Coupon role restriction, auto-apply, display, and My Account tab.
         SAWE_MSC_Coupons::instance();
 
+        // Cart / Checkout blocks: notice boxes, buttons, sync + auto-apply.
+        // Inactive on the classic shortcode pages.
+        SAWE_MSC_Blocks::instance();
+
         // Admin UI — only loaded on admin requests to avoid front-end overhead.
         if ( is_admin() ) {
             SAWE_MSC_Admin::instance();
@@ -336,12 +345,14 @@ register_activation_hook( __FILE__, function () {
 // Deactivation Hook
 // ============================================================================
 //
-// Runs when an admin clicks "Deactivate". We only flush rewrite rules to clean
-// up the /store-credits/ endpoint. Data is intentionally NOT removed here —
-// that is reserved for the uninstall hook so admins can reactivate without
-// losing member balances.
+// Runs when an admin clicks "Deactivate". We unschedule the renewal cron
+// (SAWE_MSC_User_Credits re-schedules it on the next load after reactivation)
+// and flush rewrite rules to clean up the /store-credits/ endpoint. Data is
+// intentionally NOT removed here — that is reserved for the uninstall hook so
+// admins can reactivate without losing member balances.
 //
 register_deactivation_hook( __FILE__, function () {
+    wp_clear_scheduled_hook( 'sawe_msc_daily_renewal' );
     flush_rewrite_rules();
 } );
 

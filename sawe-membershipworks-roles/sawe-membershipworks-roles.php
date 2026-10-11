@@ -3,7 +3,7 @@
  * Plugin Name: SAWE MembershipWorks Role Sync
  * Plugin URI:  https://github.com/apbrook5/wordpress-sawe-store-credit-plugin
  * Description: Assigns WordPress roles ('member', 'member-company') based on MembershipWorks membership status. Replaces the old "Add WordPress Roles based on MembershipWorks" code snippet with a database-backed diagnostic log, an admin screen under SAWE Coupons and Credits, and throttled MembershipWorks API checks.
- * Version:     1.2.3
+ * Version:     1.2.4
  * Author:      Society of Allied Weight Engineers, Inc.
  * Author URI:  https://www.sawe.org
  * License:     GPL-2.0+
@@ -80,7 +80,7 @@ defined( 'ABSPATH' ) || exit; // Block direct HTTP access to this file.
 // Constants
 // ============================================================================
 
-define( 'SAWE_MWR_VERSION',          '1.2.3' );
+define( 'SAWE_MWR_VERSION',          '1.2.4' );
 define( 'SAWE_MWR_PLUGIN_FILE',      __FILE__ );
 define( 'SAWE_MWR_PLUGIN_DIR',       plugin_dir_path( __FILE__ ) );
 define( 'SAWE_MWR_PLUGIN_URL',       plugin_dir_url( __FILE__ ) );
@@ -172,7 +172,8 @@ final class SAWE_MembershipWorks_Role_Sync {
 	 * @return void
 	 */
 	private function init_hooks(): void {
-		add_action( 'plugins_loaded', [ $this, 'load_textdomain' ] );
+		// On init, not plugins_loaded: WP 6.7+ warns when translations load before init.
+		add_action( 'init', [ $this, 'load_textdomain' ] );
 		add_action( 'plugins_loaded', [ $this, 'init_components' ], 10 );
 	}
 

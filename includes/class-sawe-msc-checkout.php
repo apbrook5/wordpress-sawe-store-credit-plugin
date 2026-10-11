@@ -84,7 +84,13 @@ class SAWE_MSC_Checkout {
         add_action( 'template_redirect', [ $this, 'maybe_prevent_page_cache' ] );
 
         // Commit deductions to DB when the order row is created.
-        add_action( 'woocommerce_checkout_order_created', [ $this, 'finalise_deductions' ], 10, 1 );
+        // Classic (shortcode) checkout fires woocommerce_checkout_order_created;
+        // the Cart/Checkout blocks go through the Store API, which never fires
+        // it and fires woocommerce_store_api_checkout_order_processed instead.
+        // Without the second hook, block checkout applies the credit discount
+        // but never deducts it from the balance.
+        add_action( 'woocommerce_checkout_order_created',           [ $this, 'finalise_deductions' ], 10, 1 );
+        add_action( 'woocommerce_store_api_checkout_order_processed', [ $this, 'finalise_deductions' ], 10, 1 );
 
         // Restore balance when an order is cancelled or refunded.
         // Both hooks pass the order ID as their first argument.
@@ -235,7 +241,14 @@ class SAWE_MSC_Checkout {
      *
      * Guest orders (user_id == 0) are skipped — guests have no credit accounts.
      *
-     * Hook: woocommerce_checkout_order_created (priority 10)
+     * The same order can pass through here more than once: classic checkout
+     * resumes a pending/failed order (and re-fires the hook) when the customer
+     * retries payment, and the Store API re-processes its draft order. Any
+     * deductions recorded by an earlier pass are reversed first, so the
+     * balance only ever reflects the order's current credit amounts.
+     *
+     * Hooks: woocommerce_checkout_order_created (priority 10)
+     *        woocommerce_store_api_checkout_order_processed (priority 10)
      *
      * @param \WC_Order $order  The newly created WC_Order object.
      *
@@ -248,11 +261,19 @@ class SAWE_MSC_Checkout {
             return; // Guest order — no user account to deduct from.
         }
 
-        $applied = SAWE_MSC_Cart::get_applied();
+        $applied  = SAWE_MSC_Cart::get_applied();
+        $previous = self::get_order_deductions( $order );
 
-        if ( empty( $applied ) ) {
+        if ( empty( $applied ) && empty( $previous ) ) {
             return; // No credits were applied to this order.
         }
+
+        // Undo an earlier pass for this same order (see docblock).
+        foreach ( $previous as $credit_post_id => $amount ) {
+            SAWE_MSC_DB::restore_credit( (int) $credit_post_id, (int) $user_id, (float) $amount );
+        }
+
+        $deductions = [];
 
         foreach ( $applied as $credit_post_id => $amount ) {
             $amount = (float) $amount;
@@ -263,12 +284,14 @@ class SAWE_MSC_Checkout {
             // Deduct from the DB balance. SAWE_MSC_DB::deduct_credit() clamps to 0.
             SAWE_MSC_DB::deduct_credit( (int) $credit_post_id, (int) $user_id, $amount );
 
-            // Accumulate deductions on the order for potential reversal.
-            // We use (existing + amount) to handle edge cases where this hook
-            // might be called more than once for the same order.
-            $existing                         = (array) $order->get_meta( '_sawe_msc_credit_deductions', true );
-            $existing[ $credit_post_id ]      = ( $existing[ $credit_post_id ] ?? 0 ) + $amount;
-            $order->update_meta_data( '_sawe_msc_credit_deductions', $existing );
+            $deductions[ (int) $credit_post_id ] = $amount;
+        }
+
+        // Record deductions on the order for potential reversal.
+        if ( $deductions ) {
+            $order->update_meta_data( '_sawe_msc_credit_deductions', $deductions );
+        } else {
+            $order->delete_meta_data( '_sawe_msc_credit_deductions' );
         }
 
         $order->save(); // Persist the meta to the DB.
@@ -309,7 +332,7 @@ class SAWE_MSC_Checkout {
         }
 
         $user_id    = $order->get_user_id();
-        $deductions = (array) $order->get_meta( '_sawe_msc_credit_deductions', true );
+        $deductions = self::get_order_deductions( $order );
 
         // Nothing to restore — either a guest order or no credits were used.
         if ( ! $user_id || empty( $deductions ) ) {
@@ -323,5 +346,20 @@ class SAWE_MSC_Checkout {
         // Remove the meta so a second status change doesn't double-restore.
         $order->delete_meta_data( '_sawe_msc_credit_deductions' );
         $order->save();
+    }
+
+    /**
+     * Read the deduction map stored on an order.
+     *
+     * get_meta() returns '' when the key is absent, and (array) '' is [''],
+     * not [] — so check the type rather than casting.
+     *
+     * @param \WC_Order $order  The order.
+     *
+     * @return array<int, float>  [ credit_post_id => amount ], empty if none.
+     */
+    private static function get_order_deductions( \WC_Order $order ): array {
+        $deductions = $order->get_meta( '_sawe_msc_credit_deductions', true );
+        return is_array( $deductions ) ? $deductions : [];
     }
 }

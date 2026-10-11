@@ -16,7 +16,8 @@
  * Visibility: non-public (no front-end URL, not in search results).
  * Admin menu: appears under the "Store Credits" top-level menu.
  * Supports:   title (credit name), editor (member-facing description),
- *             revisions, custom-fields (for REST access to meta).
+ *             revisions, custom-fields.
+ * Access:     all capabilities map to manage_woocommerce; not exposed via REST.
  *
  * Post status drives activation:
  *   publish  → Credit is active. Users with matching roles receive it.
@@ -88,7 +89,9 @@ class SAWE_MSC_Credit_Post_Type {
      *
      * Key decisions:
      *   - public => false: No front-end URL. Credits are admin-only objects.
-     *   - show_in_rest => true: Enables Gutenberg editor and REST API access.
+     *   - show_in_rest => false: Not readable or writable via the REST API.
+     *   - capabilities => manage_woocommerce: Only admins and shop managers
+     *     can create, edit, publish, or delete credit definitions.
      *   - show_in_menu => 'sawe-msc-settings': Attaches to our custom admin menu
      *     rather than the default "Posts" menu, so all credit admin is in one place.
      *   - supports 'editor': The post body is used as the member-facing description.
@@ -116,9 +119,29 @@ class SAWE_MSC_Credit_Post_Type {
             'public'          => false,  // No front-end URL or search inclusion.
             'show_ui'         => true,   // Show in WP admin.
             'show_in_menu'    => 'sawe-msc-settings', // Parent menu slug from SAWE_MSC_Admin.
-            'show_in_rest'    => true,   // Required for Gutenberg + REST API.
+            // Not exposed via REST: the edit screen is a classic meta box (no
+            // 'editor' support), and REST would let anonymous visitors list
+            // published credit definitions — including admin notes.
+            'show_in_rest'    => false,
             'supports'        => [ 'revisions', 'custom-fields' ],
-            'capability_type' => 'post', // Uses standard post capabilities (edit_post, etc.).
+            'capability_type' => 'post',
+            // Credits carry real monetary value, so every primitive cap maps to
+            // manage_woocommerce (admins + shop managers) — matching the admin
+            // menu — rather than edit_posts/publish_posts, which Authors and
+            // Contributors hold.
+            'capabilities'    => [
+                'edit_posts'             => 'manage_woocommerce',
+                'edit_others_posts'      => 'manage_woocommerce',
+                'edit_private_posts'     => 'manage_woocommerce',
+                'edit_published_posts'   => 'manage_woocommerce',
+                'publish_posts'          => 'manage_woocommerce',
+                'read_private_posts'     => 'manage_woocommerce',
+                'delete_posts'           => 'manage_woocommerce',
+                'delete_private_posts'   => 'manage_woocommerce',
+                'delete_published_posts' => 'manage_woocommerce',
+                'delete_others_posts'    => 'manage_woocommerce',
+                'create_posts'           => 'manage_woocommerce',
+            ],
             'map_meta_cap'    => true,
             'rewrite'         => false,  // No front-end URL, so no rewrite rules needed.
             'query_var'       => false,
@@ -134,14 +157,12 @@ class SAWE_MSC_Credit_Post_Type {
      * Register all sawe_store_credit post meta keys.
      *
      * Registering meta explicitly:
-     *   - Exposes fields via the REST API (required for Gutenberg block editor).
      *   - Provides sanitisation type hints.
      *   - Documents the data contract for all developers.
      *   - Enables the auth_callback security check.
      *
-     * All fields are registered with show_in_rest => true. This means they
-     * appear in GET /wp-json/wp/v2/sawe_store_credit/<id> and can be written
-     * via the REST API by users with edit_posts capability.
+     * All fields are registered with show_in_rest => false, and writes are
+     * limited to users with the manage_woocommerce capability.
      *
      * Hook: init
      *
@@ -152,9 +173,9 @@ class SAWE_MSC_Credit_Post_Type {
         $base_args = [
             'object_subtype' => 'sawe_store_credit',
             'single'         => true,   // Only one value per post (not an array of values).
-            'show_in_rest'   => true,   // Expose via REST API / Gutenberg.
-            // Auth callback: only users who can edit posts can read/write meta via REST.
-            'auth_callback'  => fn() => current_user_can( 'edit_posts' ),
+            'show_in_rest'   => false,  // The CPT is not in REST; see register_post_type().
+            // Auth callback: only store managers may write these meta keys.
+            'auth_callback'  => fn() => current_user_can( 'manage_woocommerce' ),
         ];
 
         // Admin-only notes. Never shown to members.

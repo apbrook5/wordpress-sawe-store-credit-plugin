@@ -1,6 +1,6 @@
 # SAWE Membership Store Credits
 
-**Version:** 1.2.3
+**Version:** 1.2.4
 **Requires WordPress:** 6.4+  
 **Requires WooCommerce:** 8.0+  
 **Requires PHP:** 8.0+
@@ -46,6 +46,7 @@ When a logged-in user visits the store, the plugin checks every *published* cred
 
 ### Display
 - **Checkout** – A styled box (light blue background, gold border) appears above the checkout form listing each active credit, its remaining balance, how much will be applied to the current order, and the renewal date.
+- **Cart / Checkout blocks** – If the Cart or Checkout page uses the WooCommerce blocks instead of the shortcodes, the same boxes and buttons appear above the block and update live as the cart changes.
 - **My Account → Available Store Credits** – A dedicated account tab shows all credits.
 
 ### Applying the Discount
@@ -57,7 +58,7 @@ The discount is injected as a WooCommerce *fee* (negative amount) after all othe
 Members can click **Remove Store Credit** to exclude it from the current order. The button changes to **Re-apply Store Credit** to allow reversal before checkout.
 
 ### Finalisation
-The deduction is only committed to the database when the order is **placed** (`woocommerce_checkout_order_created`). If the order is cancelled or refunded, the deducted amount is restored automatically.
+The deduction is only committed to the database when the order is **placed** (`woocommerce_checkout_order_created` for the classic checkout, `woocommerce_store_api_checkout_order_processed` for the Checkout block). If the order is cancelled or refunded, the deducted amount is restored automatically.
 
 ### Renewal (Cron)
 A daily WP-Cron job runs at midnight. On the configured Month/Day it resets every eligible user's balance back to the full initial amount.
@@ -103,6 +104,7 @@ sawe-membership-store-credits/
 │   ├── class-sawe-msc-user-credits.php  Award / revoke / renewal logic
 │   ├── class-sawe-msc-cart.php          Cart discount injection
 │   ├── class-sawe-msc-checkout.php      Checkout notice + order finalisation
+│   ├── class-sawe-msc-blocks.php        Cart / Checkout blocks support
 │   └── class-sawe-msc-account.php       My Account tab
 ├── admin/
 │   ├── class-sawe-msc-admin.php         Admin menus, meta boxes, columns
@@ -112,6 +114,7 @@ sawe-membership-store-credits/
     ├── css/sawe-msc-public.css
     └── js/
         ├── sawe-msc-cart.js
+        ├── sawe-msc-blocks.js
         └── sawe-msc-account.js
 ```
 
@@ -165,6 +168,12 @@ GitHub Actions will automatically:
 ## Changelog
 
 See [docs/CHANGELOG.md](docs/CHANGELOG.md) for the full history.
+
+### 1.2.4
+- Support for the WooCommerce Cart and Checkout blocks, added alongside the classic shortcode pages (which are unchanged).
+- Credits are now deducted for orders placed through the Checkout block, and retrying a failed payment no longer deducts twice.
+- Security: credit definitions require `manage_woocommerce` and are no longer exposed through the REST API; the CSV export neutralises spreadsheet formulas.
+- Compatibility: `Requires Plugins: woocommerce`, `WC tested up to: 11.2`, translations load on `init`, PHP 8.4 `fputcsv()` deprecation fixed, renewal cron unscheduled on deactivation.
 
 ### 1.2.3
 - Version bump only — synced with [SAWE MembershipWorks Role Sync](https://github.com/apbrook5/wordpress-sawe-store-credit-plugin/tree/main/sawe-membershipworks-roles) v1.2.3, tagged together as `v1.2.3`. No functional changes to this plugin.

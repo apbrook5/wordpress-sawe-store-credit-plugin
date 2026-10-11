@@ -23,4 +23,14 @@ if ( get_option( 'sawe_mwr_remove_table_on_uninstall' ) ) {
 	SAWE_MWR_DB::drop_table();
 }
 
-delete_option( 'sawe_mwr_remove_table_on_uninstall' );
+$options_to_remove = array(
+	'sawe_mwr_remove_table_on_uninstall',
+	'sawe_mwr_member_interval_value',
+	'sawe_mwr_member_interval_unit',
+	'sawe_mwr_nonmember_interval_value',
+	'sawe_mwr_nonmember_interval_unit',
+);
+
+foreach ( $options_to_remove as $option ) {
+	delete_option( $option );
+}

@@ -6,6 +6,32 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.4] — 2026-10-11
+
+### Added
+- Support for the WooCommerce Cart and Checkout blocks (new `SAWE_MSC_Blocks` class and `sawe-msc-blocks.js`). On block pages, the store credit and coupon boxes appear above the block with working Remove / Re-apply / Apply buttons, update live as the cart changes, and auto-apply coupons and credit sync run on page load. The classic shortcode cart and checkout are unchanged.
+
+### Security
+- Store credit definitions (`sawe_store_credit`) now require `manage_woocommerce` for every capability (create, edit, publish, delete). Previously they used standard post capabilities, so an Author could publish a credit of any amount through the REST API.
+- The `sawe_store_credit` post type and its meta are no longer exposed through the REST API. Previously anonymous visitors could list published credit definitions, including admin notes, at `/wp-json/wp/v2/sawe_store_credit`.
+- Active Store Credits CSV export now neutralises spreadsheet formula injection in the credit name, username, and display name columns (members can set their own display name).
+
+### Fixed
+- Credits are now deducted for orders placed through the WooCommerce Checkout block (Store API), via `woocommerce_store_api_checkout_order_processed`. Previously only the classic checkout deducted, so the block checkout applied the discount without reducing the balance.
+- Retrying payment on a pending/failed order no longer deducts the credit a second time; the earlier deduction for that order is reversed before re-applying.
+- Missing `_sawe_msc_credit_deductions` order meta is no longer read as `['']`.
+- The daily renewal cron event is unscheduled on deactivation.
+
+### Changed
+- Added `Requires Plugins: woocommerce` header (WordPress 6.5+ dependency handling).
+- `WC tested up to` set to 11.2 (was the invalid value `9.x`).
+- Text domain now loads on `init` rather than `plugins_loaded` (WordPress 6.7+).
+- CSV export passes `fputcsv()`'s escape argument explicitly (PHP 8.4 deprecation).
+- The credit remove/re-apply and coupon apply/remove session logic moved into shared methods (`SAWE_MSC_Cart::set_credit_removed()`, `SAWE_MSC_Coupons::apply_coupon_for_session()` / `remove_coupon_for_session()`) used by both the classic AJAX handlers and the block support. No change in classic behaviour.
+- Synced with [SAWE MembershipWorks Role Sync](../sawe-membershipworks-roles/docs/CHANGELOG.md) v1.2.4, tagged together as `v1.2.4`.
+
+---
+
 ## [1.2.3] — 2026-08-05
 
 ### Changed

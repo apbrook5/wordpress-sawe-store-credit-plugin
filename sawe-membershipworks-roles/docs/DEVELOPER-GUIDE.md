@@ -1,8 +1,8 @@
 # SAWE MembershipWorks Role Sync — Developer Guide
 
 > **Audience:** Developers who need to install, configure, extend, debug, or upgrade this plugin.
-> **Plugin version documented:** 1.2.1
-> **Last updated:** 2026-08-05
+> **Plugin version documented:** 1.2.4
+> **Last updated:** 2026-10-11
 
 ---
 
@@ -58,7 +58,7 @@ SAWE_MembershipWorks_Role_Sync   (bootstrap singleton, includes, activation hook
 | `includes/class-sawe-mwr-role-sync.php` | `SAWE_MWR_Role_Sync` — hook registration, `maybe_sync_current_user()` (throttle gate), `perform_check()` (calls `sf_shortcode()`, updates roles), `interpret_result()` (yes/no/error classification), `log_result()`. |
 | `admin/class-sawe-mwr-admin.php` | `SAWE_MWR_Admin` — `admin_menu` registration (nests under, or falls back to creating, `sawe-msc-settings`), Settings API registration for the uninstall option, renders the log page. |
 | `admin/class-sawe-mwr-list-table.php` | `SAWE_MWR_List_Table` — `WP_List_Table` subclass: columns, sortable columns, views, error-filter dropdown, column renderers. |
-| `uninstall.php` | Drops the log table only if `sawe_mwr_remove_table_on_uninstall` option is truthy. |
+| `uninstall.php` | Drops the log table only if `sawe_mwr_remove_table_on_uninstall` option is truthy; always deletes the plugin's options (uninstall flag + the four check-interval options). |
 
 ---
 
@@ -113,6 +113,7 @@ Standard WP admin list table. `prepare_items()` reads `$_GET`/`$_REQUEST` (`s`, 
 | Hook | Priority | Callback |
 |---|---|---|
 | `plugins_loaded` | 6 | Boots `SAWE_MembershipWorks_Role_Sync::instance()` |
+| `init` | default | `SAWE_MembershipWorks_Role_Sync::load_textdomain()` |
 | `wp_login` | 10 | `SAWE_MWR_Role_Sync::maybe_sync_current_user()` |
 | `profile_update` | 10 | `SAWE_MWR_Role_Sync::maybe_sync_current_user()` |
 | `woocommerce_before_cart` | 5 | `SAWE_MWR_Role_Sync::maybe_sync_current_user()` |
@@ -134,7 +135,7 @@ This plugin does not currently expose its own custom actions/filters for third-p
 
 | Constant | Value | Purpose |
 |---|---|---|
-| `SAWE_MWR_VERSION` | `'1.2.3'` | Bump in sync with the `Version:` header on every release. |
+| `SAWE_MWR_VERSION` | `'1.2.4'` | Bump in sync with the `Version:` header on every release. |
 | `SAWE_MWR_PLUGIN_FILE` | `__FILE__` of main file | Passed to `register_activation_hook()`. |
 | `SAWE_MWR_PLUGIN_DIR` | `plugin_dir_path( __FILE__ )` | Used for `require_once` includes. |
 | `SAWE_MWR_PLUGIN_URL` | `plugin_dir_url( __FILE__ )` | Reserved for future enqueued assets (none as of 1.2.0). |
@@ -221,6 +222,9 @@ This plugin and SAWE Membership Store Credits share this repository and, from v1
 ---
 
 ## 13. Upgrade Notes
+
+### Upgrading from 1.2.x → 1.2.4
+No schema changes and no action needed. Translations now load on `init`, and deleting the plugin now also removes the check-interval settings.
 
 ### Upgrading from 1.0.0 → 1.2.0
 No schema or behavior changes — version bump only, to align with the shared repo/tag release scheme. No action needed beyond updating the plugin files.

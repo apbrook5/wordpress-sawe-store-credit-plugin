@@ -486,20 +486,7 @@ class SAWE_MSC_Cart {
     public function ajax_remove_credit(): void {
         check_ajax_referer( 'sawe_msc_nonce', 'nonce' );
 
-        $post_id     = (int) ( $_POST['credit_id'] ?? 0 );
-        $removed_ids = $this->get_removed_ids();
-
-        // Avoid duplicates in the removed list.
-        if ( ! in_array( $post_id, $removed_ids, true ) ) {
-            $removed_ids[] = $post_id;
-        }
-
-        WC()->session->set( self::SESSION_REMOVED, $removed_ids );
-
-        // Recalculate so SESSION_APPLIED is updated immediately (the checkout
-        // JS uses update_checkout to re-render, but calculating now avoids
-        // an extra round-trip).
-        WC()->cart->calculate_totals();
+        $this->set_credit_removed( (int) ( $_POST['credit_id'] ?? 0 ), true );
 
         wp_send_json_success( [
             'message' => __( 'Store credit removed from this order.', 'sawe-msc' ),
@@ -523,18 +510,44 @@ class SAWE_MSC_Cart {
     public function ajax_restore_credit(): void {
         check_ajax_referer( 'sawe_msc_nonce', 'nonce' );
 
-        $post_id     = (int) ( $_POST['credit_id'] ?? 0 );
-        $removed_ids = $this->get_removed_ids();
-
-        // array_diff returns a new array without the given value; re-index with array_values.
-        $removed_ids = array_values( array_diff( $removed_ids, [ $post_id ] ) );
-
-        WC()->session->set( self::SESSION_REMOVED, $removed_ids );
-        WC()->cart->calculate_totals();
+        $this->set_credit_removed( (int) ( $_POST['credit_id'] ?? 0 ), false );
 
         wp_send_json_success( [
             'message' => __( 'Store credit re-applied.', 'sawe-msc' ),
         ] );
+    }
+
+    /**
+     * Add a credit to, or take it off, the "removed" list for this session,
+     * then recalculate totals so SESSION_APPLIED reflects the change.
+     *
+     * Shared by the classic AJAX handlers above and the block cart/checkout
+     * (SAWE_MSC_Blocks::handle_cart_update()).
+     *
+     * @param int  $post_id  Post ID of the sawe_store_credit.
+     * @param bool $removed  True = "Remove Store Credit"; false = "Re-apply".
+     *
+     * @return void
+     */
+    public function set_credit_removed( int $post_id, bool $removed ): void {
+        $removed_ids = $this->get_removed_ids();
+
+        if ( $removed ) {
+            // Avoid duplicates in the removed list.
+            if ( ! in_array( $post_id, $removed_ids, true ) ) {
+                $removed_ids[] = $post_id;
+            }
+        } else {
+            // array_diff returns a new array without the given value; re-index with array_values.
+            $removed_ids = array_values( array_diff( $removed_ids, [ $post_id ] ) );
+        }
+
+        WC()->session->set( self::SESSION_REMOVED, $removed_ids );
+
+        // Recalculate so SESSION_APPLIED is updated immediately (the checkout
+        // JS uses update_checkout to re-render, but calculating now avoids
+        // an extra round-trip).
+        WC()->cart->calculate_totals();
     }
 
     // =========================================================================
